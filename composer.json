@@ -1,0 +1,25 @@
+{
+    "name": "sanctumos/tmp-sanctum",
+    "description": "Ephemeral file host (tmpfiles-compatible) for tmp.sanctumos.org",
+    "type": "project",
+    "license": "AGPL-3.0-or-later",
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "SanctumTmp\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SanctumTmp\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

@@ -1,0 +1,12 @@
+/vendor/
+composer.lock
+public/includes/config.local.php
+db/*.db
+db/*.db-*
+storage/*
+!storage/.gitkeep
+public/dl/*
+!public/dl/.gitkeep
+logs/*
+!logs/.gitkeep
+.phpunit.cache/
