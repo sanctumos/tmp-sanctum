@@ -7,6 +7,7 @@ storage/*
 !storage/.gitkeep
 public/dl/*
 !public/dl/.gitkeep
+!public/dl/index.php
 logs/*
 !logs/.gitkeep
 .phpunit.cache/
