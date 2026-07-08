@@ -75,7 +75,7 @@ final class ApiUploadTest extends TestCase
         $json = json_decode((string) $body, true);
         $this->assertIsArray($json);
         $this->assertSame('success', $json['status'] ?? null);
-        $this->assertStringContainsString('/dl/', $json['data']['url'] ?? $json['data']['direct_url'] ?? '');
+        $this->assertStringContainsString('/uploads/', $json['data']['url'] ?? $json['data']['direct_url'] ?? '');
     }
 
     private function rmTree(string $dir): void

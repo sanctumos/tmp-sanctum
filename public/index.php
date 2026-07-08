@@ -66,7 +66,7 @@ function render_home(): void
 function render_view(array $row, string $id, string $filename): void
 {
     $config = sanctum_tmp_config();
-    $direct = $config->baseUrl . '/dl/' . rawurlencode($id) . '/' . rawurlencode($filename);
+    $direct = $config->baseUrl . $config->dlUrlPrefix . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
     $expires = date('Y-m-d H:i:s T', (int) $row['expires_at']);
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>' . htmlspecialchars($filename) . '</title></head><body>';

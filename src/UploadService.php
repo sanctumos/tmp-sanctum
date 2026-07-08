@@ -74,7 +74,7 @@ final class UploadService
         ]);
 
         $viewUrl = $this->config->baseUrl . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
-        $directUrl = $this->config->baseUrl . '/dl/' . rawurlencode($id) . '/' . rawurlencode($filename);
+        $directUrl = $this->config->baseUrl . $this->config->dlUrlPrefix . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
 
         return [
             'view_url' => $viewUrl,

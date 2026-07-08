@@ -54,7 +54,7 @@ final class UploadServiceTest extends TestCase
         unlink($tmp);
 
         $this->assertStringStartsWith('https://tmp.test/', $result['view_url']);
-        $this->assertStringContainsString('/dl/', $result['direct_url']);
+        $this->assertStringContainsString('/uploads/', $result['direct_url']);
         $dlPath = $this->config->dlDir . '/' . $result['id'] . '/photo.png';
         $this->assertFileExists($dlPath);
     }
