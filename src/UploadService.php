@@ -174,6 +174,18 @@ final class UploadService
         return $id;
     }
 
+    /**
+     * Extensions that a web server could execute as code if they land in the
+     * publicly served uploads tree. Nginx already refuses to run PHP under the
+     * /uploads/ prefix, but neutralizing the name here is defense-in-depth so a
+     * dangerous file can never be written with an executable extension at all.
+     */
+    private const DANGEROUS_EXTENSIONS = [
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'pht', 'phtml',
+        'phar', 'shtml', 'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'asp', 'aspx',
+        'jsp', 'jspx', 'exe', 'com', 'htaccess', 'htpasswd',
+    ];
+
     public function sanitizeFilename(string $name): string
     {
         $base = basename(str_replace('\\', '/', $name));
@@ -186,6 +198,23 @@ final class UploadService
             $ext = pathinfo($base, PATHINFO_EXTENSION);
             $stem = substr(pathinfo($base, PATHINFO_FILENAME), 0, 180);
             $base = $ext !== '' ? $stem . '.' . $ext : $stem;
+        }
+        return $this->neutralizeExecutable($base);
+    }
+
+    /**
+     * If any extension segment is server-executable (covers double-extension
+     * tricks like "shell.php.jpg"), append ".txt" so the stored/served file is
+     * inert regardless of web server handler mappings.
+     */
+    private function neutralizeExecutable(string $base): string
+    {
+        $segments = explode('.', strtolower($base));
+        array_shift($segments); // drop the stem; keep only extension segments
+        foreach ($segments as $seg) {
+            if (in_array($seg, self::DANGEROUS_EXTENSIONS, true)) {
+                return $base . '.txt';
+            }
         }
         return $base;
     }

@@ -97,6 +97,17 @@ final class UploadServiceTest extends TestCase
         $this->assertSame('passwd', $name);
     }
 
+    public function test_sanitize_filename_neutralizes_executables(): void
+    {
+        $service = new UploadService($this->config);
+        $this->assertSame('shell.php.txt', $service->sanitizeFilename('shell.php'));
+        $this->assertSame('x.PHtml.txt', $service->sanitizeFilename('x.PHtml'));
+        // double-extension trick is caught by scanning every segment
+        $this->assertSame('evil.php.jpg.txt', $service->sanitizeFilename('evil.php.jpg'));
+        // benign images are untouched
+        $this->assertSame('photo.png', $service->sanitizeFilename('photo.png'));
+    }
+
     private function rmTree(string $dir): void
     {
         if (!is_dir($dir)) {
