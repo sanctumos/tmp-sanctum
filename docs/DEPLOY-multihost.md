@@ -6,7 +6,8 @@ Handoff checklist for Ada (full provisioning per multihost git-sync pattern).
 
 1. **DNS:** `tmp.sanctumos.org` → multihost (`64.95.10.156`).
 2. **HTTPS:** valid certificate; `https://tmp.sanctumos.org/` returns upload form.
-3. **Git sync:** `/root/sites/tmp.sanctumos.org.env` exists; `/root/sync.sh tmp.sanctumos.org` succeeds.
+3. **Upload size limits (413 fix):** nginx vhost must set `client_max_body_size 100M;` (default 1M causes 413 before PHP). Docroot includes `public/.user.ini` (`upload_max_filesize` / `post_max_size` ≥ 100M) for PHP-FPM.
+4. **Git sync:** `/root/sites/tmp.sanctumos.org.env` exists; `/root/sync.sh tmp.sanctumos.org` succeeds.
 4. **Cron:** standard sync/deploy pair for this vhost.
 5. **Writable dirs** (outside docroot or under `html` as needed):
    - `db/` (SQLite)
@@ -20,6 +21,7 @@ Handoff checklist for Ada (full provisioning per multihost git-sync pattern).
    (`SANCTUM_TMP_ROOT` or an argv path both work; the log line prints the resolved `root=`.)
 7. **Smoke:**
    - `curl -fsS -F "file=@/etc/hostname" https://tmp.sanctumos.org/api/v1/upload.php` → JSON `"status":"success"`, `direct_url` under `/uploads/`.
+   - Browser upload at `https://tmp.sanctumos.org/` → HTML result page with QR encoding the same JSON.
    - `curl -fsSI "<direct_url from JSON>"` → `200` and `image/*` or `text/plain`.
    - **Persistence:** re-run the `direct_url` fetch after the next deploy tick (>2 min) — it must still return `200` (previously downloads were wiped by `rsync --delete` because they were written under `html/dl/`).
 

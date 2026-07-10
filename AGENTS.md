@@ -1,0 +1,54 @@
+# tmp.sanctumos.org — agent notes
+
+Sanctum ephemeral file exchange. Hostname: **`tmp.sanctumos.org`**.
+
+## When to use this host
+
+- Short-lived uploads for **Broca → Athena** image attachments (Venice / `image_interpret` need a **GET**-able URL).
+- Fallback when **tmpfiles.org** direct URLs fail (HTML interstitial instead of raw bytes).
+- Human **desktop → phone** handoff: browser upload at `/` returns a QR code encoding the API JSON.
+
+## What agents should call
+
+| Task | Method | Path |
+|------|--------|------|
+| Upload bytes | `POST` | `/api/v1/upload.php` |
+| Download bytes | `GET` | value of `data.direct_url` from upload JSON |
+
+Do **not** scrape the HTML home page or view URLs for automation. Use the API path and **`direct_url`**.
+
+## Upload contract
+
+- Multipart field name: **`file`**
+- Response: JSON (`status`, `data.url`, `data.direct_url`, `data.id`, `data.filename`)
+- Prefer User-Agent: `Sanctum-Broca/1.0 (ephemeral upload)` (matches workspace `ephemeral_upload.py`)
+
+## Broca workspace default
+
+`projects/broca/common/ephemeral_upload.py` — primary upload URL:
+
+`https://tmp.sanctumos.org/api/v1/upload.php` (`SANCTUM_TMP_UPLOAD_URL` optional override).
+
+## Plain discovery (no HTML UI)
+
+Automated clients hitting **`GET /`** receive **plain text** pointers, not the branded web UI.
+
+- API reference (markdown): **`GET /docs/API.md`**
+- This file over HTTP: **`GET /AGENTS.md`**
+
+Full API detail: [`docs/API.md`](docs/API.md) in the repo.
+
+## Repo layout
+
+| Path | Role |
+|------|------|
+| `public/api/v1/upload.php` | Upload endpoint |
+| `public/index.php` | Browser router + view pages |
+| `src/UploadService.php` | Storage + SQLite metadata |
+| `tools/purge-expired.php` | Cron TTL purge |
+
+Deploy: multihost git-sync; **`composer install --no-dev`** at repo root (QR on browser uploads). See `docs/DEPLOY-multihost.md`.
+
+## Limits
+
+Default max upload **100 MiB**; nginx must set `client_max_body_size 100M;` and PHP `upload_max_filesize` accordingly (see `public/.user.ini`).

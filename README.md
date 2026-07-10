@@ -10,10 +10,12 @@ Temporary file host for Sanctum (`tmp.sanctumos.org`) — **tmpfiles.org-compati
 
 ## API (tmpfiles-compatible)
 
-**Upload:** `POST /api/v1/upload` — multipart field `file`
+**Upload:** `POST /api/v1/upload.php` — multipart field `file` → JSON.
+
+**Browser upload:** `POST /` via the home form → HTML result page (tmpfiles-style) with links and a **QR code** encoding the same JSON (scan on phone to avoid OCR).
 
 ```json
-{"status":"success","data":{"url":"https://tmp.sanctumos.org/{id}/{filename}"}}
+{"status":"success","data":{"url":"https://tmp.sanctumos.org/{id}/{filename}","direct_url":"https://tmp.sanctumos.org/uploads/{id}/{filename}","id":"…","filename":"…"}}
 ```
 
 **Direct download:** `GET /dl/{id}/{filename}` — raw bytes, `Content-Type` from upload.
@@ -25,6 +27,8 @@ Temporary file host for Sanctum (`tmp.sanctumos.org`) — **tmpfiles.org-compati
 | Path | Role |
 |------|------|
 | `public/` | Web docroot |
+| `AGENTS.md` | Agent integration notes (also at `/AGENTS.md`) |
+| `docs/API.md` | HTTP API reference (browser: `/docs/api/`, plain: `/docs/API.md`) |
 | `public/index.php` | Home + router (view URLs) |
 | `public/api/v1/upload.php` | Upload API |
 | `public/dl/` | Published files (GET direct) |
@@ -51,7 +55,7 @@ composer install
 
 ## Deploy (multihost)
 
-Ada provisions `tmp.sanctumos.org` with standard LEMP sync (`sites/tmp.sanctumos.org.env`, `sync.sh`, cron). Docroot = `public/`. Ensure `public/dl/`, `storage/`, `db/`, `logs/` are writable by PHP-FPM user.
+Ada provisions `tmp.sanctumos.org` with standard LEMP sync (`sites/tmp.sanctumos.org.env`, `sync.sh`, cron). Docroot = `public/`. Run `composer install --no-dev` at the **repo root** (not only `public/`) so QR generation works. Ensure `public/dl/`, `storage/`, `db/`, `logs/` are writable by PHP-FPM user.
 
 Cron (example, root crontab):
 
