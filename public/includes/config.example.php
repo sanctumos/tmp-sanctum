@@ -13,4 +13,5 @@ return [
     'base_url' => 'https://tmp.sanctumos.org',
     'max_bytes' => 104857600,
     'ttl_seconds' => 3600, // 60 minutes
+    'max_batch_size' => 20,
 ];

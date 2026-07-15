@@ -8,6 +8,8 @@ Base URL: `https://tmp.sanctumos.org`
 
 **`POST /api/v1/upload.php`**
 
+### Single file (default)
+
 | Part | Name | Required |
 |------|------|----------|
 | multipart | `file` | yes |
@@ -28,6 +30,38 @@ Base URL: `https://tmp.sanctumos.org`
 
 Use **`direct_url`** for bots, Venice vision, Broca, and other clients that need raw bytes via `GET`.
 
+### Multi-file batch (opt-in)
+
+Send multiple files in one request using the **`files[]`** multipart field (or **`file[]`** with `?multi=1` / header `X-Sanctum-Tmp-Multi: 1`). Existing single-`file` callers are unchanged.
+
+| Part | Name | Required |
+|------|------|----------|
+| multipart | `files[]` | yes (one part per file) |
+
+**Success (200)** when all succeed; **207** when some fail; **500** when all fail.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "count": 2,
+    "succeeded": 2,
+    "failed": 0,
+    "files": [
+      {
+        "status": "success",
+        "url": "https://tmp.sanctumos.org/{id}/{filename}",
+        "direct_url": "https://tmp.sanctumos.org/uploads/{id}/{filename}",
+        "id": "{id}",
+        "filename": "{filename}"
+      }
+    ]
+  }
+}
+```
+
+Per-file errors include `"status": "error"`, `"filename"`, and `"message"`. Batch size is capped (default **20** files) via `max_batch_size` in `config.local.php` or `SANCTUM_TMP_MAX_BATCH_SIZE`.
+
 **Errors** — JSON body, non-2xx status:
 
 ```json
@@ -40,6 +74,12 @@ Common cases: missing `file` (400), empty upload (500), over size limit (500), n
 
 ```bash
 curl -fsS -F "file=@./photo.png" https://tmp.sanctumos.org/api/v1/upload.php
+```
+
+Multi-file batch:
+
+```bash
+curl -fsS -F "files[]=@./a.png" -F "files[]=@./b.txt" https://tmp.sanctumos.org/api/v1/upload.php
 ```
 
 Recommended User-Agent for Sanctum automation: `Sanctum-Broca/1.0 (ephemeral upload)`.
@@ -64,12 +104,13 @@ HTML metadata and download link. Prefer **`direct_url`** for programmatic access
 |---------|---------|
 | Max file size | 100 MiB |
 | TTL | 72 hours (259200 s) |
+| Max batch size | 20 files |
 
-Override on server via `config.local.php` or env (`SANCTUM_TMP_MAX_BYTES`, `SANCTUM_TMP_TTL_SECONDS`).
+Override on server via `config.local.php` or env (`SANCTUM_TMP_MAX_BYTES`, `SANCTUM_TMP_TTL_SECONDS`, `SANCTUM_TMP_MAX_BATCH_SIZE`).
 
 ## Browser upload
 
-**`POST /`** with multipart `file` returns an HTML result page (links + QR code with the JSON above). API clients should use **`/api/v1/upload.php`** only.
+**`GET /`** — drag-and-drop or multi-select UI uploads files via the single-file API (queued, up to three concurrent). **`POST /`** with multipart `file` or `files[]` returns an HTML result page. API clients should use **`/api/v1/upload.php`**.
 
 ## Related
 

@@ -14,6 +14,8 @@ final class Config
     public readonly string $dlUrlPrefix;
     public readonly int $maxBytes;
     public readonly int $ttlSeconds;
+    /** Max files per multi-upload batch (DoS guard). */
+    public readonly int $maxBatchSize;
 
     public function __construct(?string $rootDir = null)
     {
@@ -59,5 +61,9 @@ final class Config
         );
         $this->maxBytes = (int) ($overrides['max_bytes'] ?? getenv('SANCTUM_TMP_MAX_BYTES') ?: 104857600);
         $this->ttlSeconds = (int) ($overrides['ttl_seconds'] ?? getenv('SANCTUM_TMP_TTL_SECONDS') ?: 259200);
+        $this->maxBatchSize = (int) ($overrides['max_batch_size'] ?? getenv('SANCTUM_TMP_MAX_BATCH_SIZE') ?: 20);
+        if ($this->maxBatchSize < 1) {
+            $this->maxBatchSize = 1;
+        }
     }
 }

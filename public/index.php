@@ -27,7 +27,11 @@ if ($uri === '/AGENTS.md') {
 }
 
 if ($uri === '/' || $uri === '/index.php') {
-    if ($method === 'POST' && isset($_FILES['file'])) {
+    if ($method === 'GET' && isset($_GET['uploaded']) && (string) $_GET['uploaded'] === '1') {
+        render_upload_results_page();
+        exit;
+    }
+    if ($method === 'POST' && (isset($_FILES['file']) || isset($_FILES['files']))) {
         define('SANCTUM_TMP_BROWSER_UPLOAD', true);
         require __DIR__ . '/api/v1/upload.php';
         exit;

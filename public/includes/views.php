@@ -35,6 +35,25 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-ser
 .meta{color:var(--muted);font-size:.92rem;line-height:1.5}
 .upload-box{border:1px dashed #3a4f6e;border-radius:10px;padding:1.25rem;background:var(--bg2);margin:1rem 0}
 .upload-box input[type=file]{max-width:100%;margin-bottom:.75rem;color:var(--text)}
+.drop-zone{border:2px dashed #3a4f6e;border-radius:10px;padding:2rem 1.25rem;background:var(--bg2);
+  margin:1rem 0;text-align:center;transition:border-color .15s,background .15s;cursor:pointer}
+.drop-zone.dragover{border-color:var(--accent);background:#121a2e}
+.drop-zone p{margin:.35rem 0;color:var(--muted)}
+.drop-zone .hint{font-size:.85rem}
+.file-queue{margin:1rem 0}
+.file-row{display:flex;flex-direction:column;gap:.35rem;padding:.75rem 0;border-bottom:1px solid var(--border)}
+.file-row:last-child{border-bottom:none}
+.file-row-head{display:flex;justify-content:space-between;align-items:center;gap:.75rem}
+.file-name{font-size:.92rem;word-break:break-all}
+.file-status{font-size:.82rem;color:var(--muted);white-space:nowrap}
+.file-status.ok{color:var(--ok)}
+.file-status.err{color:var(--err)}
+.progress{height:6px;background:#1a2438;border-radius:4px;overflow:hidden}
+.progress>span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width .12s}
+.upload-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem;align-items:center}
+.upload-actions .meta{margin:0}
+.results-table td code{font-size:.78rem;word-break:break-all}
 .btn{display:inline-block;padding:.65rem 1.15rem;border:none;border-radius:8px;cursor:pointer;
   background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;text-decoration:none;
   font-weight:600;font-size:.95rem}
@@ -81,6 +100,24 @@ function sanctum_tmp_page_shell_end(): void
     echo '<a href="/docs/api/">API</a> · <a href="/AGENTS.md">Agents</a></footer></div></body></html>';
 }
 
+/** Render batch/single QR block matching Sanctum Temp styling. */
+function sanctum_tmp_render_qr_block(string $json, string $hint = 'Scan to copy the API JSON on your phone — no OCR.'): void
+{
+    $qr = QrSvg::encode($json);
+    echo '<div class="qr-wrap">';
+    echo '<p class="meta" style="margin:0;text-align:center">' . htmlspecialchars($hint) . '</p>';
+    if ($qr !== null) {
+        if (str_starts_with($qr, 'data:image/svg+xml')) {
+            echo '<img src="' . htmlspecialchars($qr) . '" alt="QR code with upload JSON">';
+        } else {
+            echo $qr;
+        }
+    } else {
+        echo '<p class="err">QR unavailable; use the JSON block below.</p>';
+    }
+    echo '</div>';
+}
+
 function render_home(): void
 {
     if (!ClientMode::wantsBrowserHtml()) {
@@ -91,20 +128,176 @@ function render_home(): void
     $config = sanctum_tmp_config();
     $maxMb = (int) round($config->maxBytes / 1048576);
     $ttlHours = max(1, (int) round($config->ttlSeconds / 3600));
+    $maxBatch = $config->maxBatchSize;
     sanctum_tmp_page_shell_start('Upload', 'tmp.sanctumos.org');
-    echo '<h2>Drop a file</h2>';
-    echo '<p class="lead">Temporary uploads for Sanctum workflows — share a link, scan a QR, or hand bytes to an agent. ';
+    echo '<h2>Drop files</h2>';
+    echo '<p class="lead">Temporary uploads for Sanctum workflows — share links, scan QR codes, or hand bytes to an agent. ';
     echo 'Files expire automatically.</p>';
-    echo '<p class="meta">Up to <strong>' . htmlspecialchars((string) $maxMb) . ' MiB</strong> · ';
-    echo 'TTL ~<strong>' . htmlspecialchars((string) $ttlHours) . ' hours</strong></p>';
-    echo '<div class="upload-box"><form method="post" enctype="multipart/form-data" action="/">';
-    echo '<input type="file" name="file" required><br>';
-    echo '<button class="btn" type="submit">Upload</button></form></div>';
+    echo '<p class="meta">Up to <strong>' . htmlspecialchars((string) $maxMb) . ' MiB</strong> per file · ';
+    echo 'TTL ~<strong>' . htmlspecialchars((string) $ttlHours) . ' hours</strong> · ';
+    echo 'max <strong>' . htmlspecialchars((string) $maxBatch) . '</strong> files per batch</p>';
+
+    echo '<div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop files">';
+    echo '<p><strong>Drag files here</strong> or click to browse</p>';
+    echo '<p class="hint">Multiple files supported</p>';
+    echo '<input type="file" id="file-input" multiple hidden></div>';
+
+    echo '<div class="file-queue" id="file-queue" hidden></div>';
+    echo '<div class="upload-actions" id="upload-actions" hidden>';
+    echo '<button class="btn" type="button" id="upload-btn">Upload</button>';
+    echo '<button class="btn secondary" type="button" id="clear-btn">Clear</button>';
+    echo '<p class="meta" id="upload-summary"></p></div>';
+
     echo '<div class="doc-links">';
     echo '<a href="/docs/api/">API documentation</a>';
     echo '<a href="/AGENTS.md">AGENTS.md</a>';
     echo '</div>';
+
+    echo '<noscript><div class="upload-box"><form method="post" enctype="multipart/form-data" action="/">';
+    echo '<p class="meta">JavaScript is disabled — single-file upload only.</p>';
+    echo '<input type="file" name="file" required><br>';
+    echo '<button class="btn" type="submit">Upload</button></form></div></noscript>';
+
+    echo '<script>' . sanctum_tmp_upload_js($maxBatch) . '</script>';
     sanctum_tmp_page_shell_end();
+}
+
+function sanctum_tmp_upload_js(int $maxBatch): string
+{
+    $maxBatchJs = (int) $maxBatch;
+    return <<<JS
+(function(){
+  const maxBatch = {$maxBatchJs};
+  const concurrency = 3;
+  const endpoint = '/api/v1/upload.php';
+  const drop = document.getElementById('drop-zone');
+  const input = document.getElementById('file-input');
+  const queue = document.getElementById('file-queue');
+  const actions = document.getElementById('upload-actions');
+  const uploadBtn = document.getElementById('upload-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const summary = document.getElementById('upload-summary');
+  let items = [];
+
+  function fmtBytes(n){
+    if(n < 1024) return n + ' B';
+    if(n < 1048576) return (n/1024).toFixed(1) + ' KiB';
+    return (n/1048576).toFixed(1) + ' MiB';
+  }
+
+  function setItems(files){
+    const list = Array.from(files || []);
+    if(!list.length) return;
+    const room = maxBatch - items.length;
+    if(room <= 0){ alert('Maximum ' + maxBatch + ' files per batch.'); return; }
+    const slice = list.slice(0, room);
+    if(list.length > room) alert('Only the first ' + room + ' file(s) were added (batch limit ' + maxBatch + ').');
+    slice.forEach(f => items.push({file:f, status:'queued', progress:0, result:null, error:''}));
+    render();
+  }
+
+  function render(){
+    queue.innerHTML = '';
+    if(!items.length){
+      queue.hidden = true;
+      actions.hidden = true;
+      return;
+    }
+    queue.hidden = false;
+    actions.hidden = false;
+    items.forEach((it, idx) => {
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      const head = document.createElement('div');
+      head.className = 'file-row-head';
+      const name = document.createElement('span');
+      name.className = 'file-name';
+      name.textContent = it.file.name + ' (' + fmtBytes(it.file.size) + ')';
+      const st = document.createElement('span');
+      st.className = 'file-status' + (it.status==='done'?' ok':it.status==='error'?' err':'');
+      st.textContent = it.status==='queued'?'Queued':it.status==='uploading'?'Uploading…':it.status==='done'?'Done':it.error||'Failed';
+      head.appendChild(name);
+      head.appendChild(st);
+      row.appendChild(head);
+      const bar = document.createElement('div');
+      bar.className = 'progress';
+      const fill = document.createElement('span');
+      fill.style.width = (it.progress*100)+'%';
+      bar.appendChild(fill);
+      row.appendChild(bar);
+      queue.appendChild(row);
+    });
+    const busy = items.some(i => i.status==='uploading');
+    uploadBtn.disabled = busy || !items.some(i => i.status==='queued');
+    clearBtn.disabled = busy;
+    const done = items.filter(i => i.status==='done').length;
+    const failed = items.filter(i => i.status==='error').length;
+    if(done || failed) summary.textContent = done + ' uploaded' + (failed?(', '+failed+' failed'):'') + '.';
+    else summary.textContent = items.length + ' file(s) ready.';
+  }
+
+  function uploadOne(it){
+    return new Promise(resolve => {
+      it.status = 'uploading';
+      it.progress = 0;
+      render();
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', endpoint);
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      xhr.upload.onprogress = e => {
+        if(e.lengthComputable){ it.progress = e.loaded / e.total; render(); }
+      };
+      xhr.onload = () => {
+        let payload = null;
+        try { payload = JSON.parse(xhr.responseText); } catch(e) {}
+        if(xhr.status >= 200 && xhr.status < 300 && payload && payload.status === 'success'){
+          it.status = 'done';
+          it.progress = 1;
+          it.result = payload.data;
+        } else {
+          it.status = 'error';
+          it.error = (payload && payload.message) ? payload.message : ('HTTP ' + xhr.status);
+        }
+        render();
+        resolve();
+      };
+      xhr.onerror = () => { it.status='error'; it.error='Network error'; render(); resolve(); };
+      const fd = new FormData();
+      fd.append('file', it.file, it.file.name);
+      xhr.send(fd);
+    });
+  }
+
+  async function runQueue(){
+    uploadBtn.disabled = true;
+    const pending = items.filter(i => i.status==='queued');
+    let idx = 0;
+    async function worker(){
+      while(idx < pending.length){
+        const cur = pending[idx++];
+        await uploadOne(cur);
+      }
+    }
+    const workers = Array.from({length: Math.min(concurrency, pending.length)}, () => worker());
+    await Promise.all(workers);
+    const results = items.filter(i => i.status==='done' && i.result).map(i => i.result);
+    if(results.length){
+      sessionStorage.setItem('sanctum_tmp_upload_results', JSON.stringify(results));
+      location.href = '/?uploaded=1';
+    }
+  }
+
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); input.click(); }});
+  input.addEventListener('change', () => { setItems(input.files); input.value=''; });
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragover'); }));
+  drop.addEventListener('drop', e => setItems(e.dataTransfer.files));
+  uploadBtn.addEventListener('click', runQueue);
+  clearBtn.addEventListener('click', () => { if(!items.some(i=>i.status==='uploading')){ items=[]; render(); }});
+  render();
+})();
+JS;
 }
 
 function render_home_plain(): void
@@ -114,6 +307,7 @@ function render_home_plain(): void
     echo "Sanctum temporary file host\n";
     echo $config->baseUrl . "\n\n";
     echo "Upload:  POST /api/v1/upload.php  (multipart field: file)\n";
+    echo "Multi:   POST /api/v1/upload.php  (multipart field: files[]; max {$config->maxBatchSize} per batch)\n";
     echo "API:     GET  /docs/API.md\n";
     echo "Agents:  GET  /AGENTS.md\n";
 }
@@ -175,7 +369,6 @@ function render_upload_success(array $payload): void
     $viewUrl = (string) ($data['url'] ?? '');
     $directUrl = (string) ($data['direct_url'] ?? '');
     $json = UploadApi::encodePayload($payload);
-    $qr = QrSvg::encode($json);
 
     sanctum_tmp_page_shell_start('Upload complete', 'Ready to share');
     echo '<h2>Upload complete</h2>';
@@ -187,22 +380,95 @@ function render_upload_success(array $payload): void
         . htmlspecialchars($directUrl) . '">' . htmlspecialchars($directUrl) . '</a></p>';
     echo '</div>';
 
-    echo '<div class="qr-wrap">';
-    echo '<p class="meta" style="margin:0;text-align:center">Scan to copy the API JSON on your phone — no OCR.</p>';
-    if ($qr !== null) {
-        if (str_starts_with($qr, 'data:image/svg+xml')) {
-            echo '<img src="' . htmlspecialchars($qr) . '" alt="QR code with upload JSON">';
-        } else {
-            echo $qr;
-        }
-    } else {
-        echo '<p class="err">QR unavailable; use the JSON block below.</p>';
-    }
-    echo '</div>';
+    sanctum_tmp_render_qr_block($json);
 
     echo '<p class="meta">Raw API response</p>';
     echo '<pre class="json">' . htmlspecialchars($json) . '</pre>';
     echo '<p><a class="btn" href="/">Upload another</a></p>';
+    sanctum_tmp_page_shell_end();
+}
+
+/**
+ * @param array{status: string, data: array{count: int, succeeded: int, failed: int, files: list<array<string, string>>}} $payload
+ */
+function render_upload_success_multi(array $payload): void
+{
+    $data = $payload['data'];
+    $files = $data['files'] ?? [];
+    $json = UploadApi::encodePayload($payload);
+
+    sanctum_tmp_page_shell_start('Upload complete', 'Ready to share');
+    echo '<h2>Upload complete</h2>';
+    $succeeded = (int) ($data['succeeded'] ?? 0);
+    $failed = (int) ($data['failed'] ?? 0);
+    echo '<p class="lead"><strong>' . htmlspecialchars((string) $succeeded) . '</strong> of ';
+    echo '<strong>' . htmlspecialchars((string) ($data['count'] ?? count($files))) . '</strong> files are live.';
+    if ($failed > 0) {
+        echo ' <span class="err">' . htmlspecialchars((string) $failed) . ' failed.</span>';
+    }
+    echo '</p>';
+
+    echo '<table class="results-table"><thead><tr><th>File</th><th>Direct link</th></tr></thead><tbody>';
+    foreach ($files as $row) {
+        $filename = (string) ($row['filename'] ?? '');
+        $status = (string) ($row['status'] ?? '');
+        echo '<tr><td>' . htmlspecialchars($filename);
+        if ($status !== 'success') {
+            echo '<br><span class="err">' . htmlspecialchars((string) ($row['message'] ?? 'Failed')) . '</span>';
+        }
+        echo '</td><td>';
+        if ($status === 'success' && !empty($row['direct_url'])) {
+            $direct = (string) $row['direct_url'];
+            echo '<a href="' . htmlspecialchars($direct) . '">' . htmlspecialchars($direct) . '</a>';
+        } else {
+            echo '—';
+        }
+        echo '</td></tr>';
+    }
+    echo '</tbody></table>';
+
+    sanctum_tmp_render_qr_block(
+        $json,
+        'Scan to copy the batch API JSON on your phone — no OCR.'
+    );
+
+    echo '<p class="meta">Raw API response</p>';
+    echo '<pre class="json">' . htmlspecialchars($json) . '</pre>';
+    echo '<p><a class="btn" href="/">Upload more</a></p>';
+    sanctum_tmp_page_shell_end();
+}
+
+/** Browser page after JS multi-upload completes (reads sessionStorage client-side). */
+function render_upload_results_page(): void
+{
+    sanctum_tmp_page_shell_start('Upload complete', 'Ready to share');
+    echo '<h2>Upload complete</h2>';
+    echo '<p class="lead" id="results-lead">Loading results…</p>';
+    echo '<table class="results-table" id="results-table" hidden><thead><tr><th>File</th><th>Direct link</th><th>View</th></tr></thead><tbody></tbody></table>';
+    echo '<div id="results-qr" hidden></div>';
+    echo '<p class="meta">Raw JSON</p><pre class="json" id="results-json"></pre>';
+    echo '<p><a class="btn" href="/">Upload more</a></p>';
+    echo '<script>(function(){';
+    echo 'const raw=sessionStorage.getItem("sanctum_tmp_upload_results");';
+    echo 'if(!raw){document.getElementById("results-lead").textContent="No results in this session.";return;}';
+    echo 'let rows;try{rows=JSON.parse(raw);}catch(e){document.getElementById("results-lead").textContent="Could not read results.";return;}';
+    echo 'sessionStorage.removeItem("sanctum_tmp_upload_results");';
+    echo 'document.getElementById("results-lead").innerHTML="<strong>"+rows.length+"</strong> file(s) uploaded.";';
+    echo 'const tb=document.querySelector("#results-table tbody");rows.forEach(r=>{';
+    echo 'const tr=document.createElement("tr");';
+    echo 'tr.innerHTML="<td>"+escapeHtml(r.filename||"")+"</td>"+';
+    echo '"<td><a href=\\""+escapeHtml(r.direct_url||"")+"\\">"+escapeHtml(r.direct_url||"")+"</a></td>"+';
+    echo '"<td><a href=\\""+escapeHtml(r.url||"")+"\\">View</a></td>";tb.appendChild(tr);});';
+    echo 'document.getElementById("results-table").hidden=false;';
+    echo 'const payload={status:"success",data:{files:rows,count:rows.length,succeeded:rows.length,failed:0}};';
+    echo 'const jsonText=JSON.stringify(payload);';
+    echo 'document.getElementById("results-json").textContent=JSON.stringify(payload,null,2);';
+    echo 'fetch("/api/v1/qr.php",{method:"POST",headers:{"Content-Type":"application/json"},body:jsonText})';
+    echo '.then(r=>r.ok?r.text():Promise.reject(new Error("QR HTTP "+r.status)))';
+    echo '.then(html=>{const el=document.getElementById("results-qr");el.innerHTML=html;el.hidden=false;})';
+    echo '.catch(()=>{const el=document.getElementById("results-qr");el.innerHTML=\'<div class="qr-wrap"><p class="err">QR unavailable; use the JSON block below.</p></div>\';el.hidden=false;});';
+    echo 'function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}';
+    echo '})();</script>';
     sanctum_tmp_page_shell_end();
 }
 
