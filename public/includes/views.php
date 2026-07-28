@@ -61,6 +61,17 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-ser
 .btn:hover{filter:brightness(1.06)}
 .links a{color:var(--accent);word-break:break-all}
 .links p{margin:.75rem 0}
+.link-row{display:flex;align-items:flex-start;gap:.5rem;margin:.75rem 0}
+.link-row .link-body{flex:1;min-width:0}
+.link-row .link-body strong{display:block;margin-bottom:.2rem}
+.copy-btn{flex-shrink:0;padding:.35rem .65rem;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg2);color:var(--muted);cursor:pointer;font-size:.78rem;font-weight:600;
+  line-height:1.2;white-space:nowrap}
+.copy-btn:hover{color:var(--text);border-color:#3a4f6e}
+.copy-btn.copied{color:var(--ok);border-color:rgba(61,214,140,.45)}
+.json-block{margin:0 0 1rem}
+.json-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin:0 0 .5rem}
+.json-head .meta{margin:0}
 .doc-links{display:flex;flex-wrap:wrap;gap:.75rem;margin:1.25rem 0 0}
 .doc-links a{font-size:.9rem;color:var(--muted);text-decoration:none;border-bottom:1px dotted #4a607a}
 .doc-links a:hover{color:var(--accent)}
@@ -68,7 +79,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-ser
   background:var(--bg2);border:1px dashed #3a4f6e;border-radius:10px}
 .qr-wrap img,.qr-wrap svg{max-width:min(300px,100%);height:auto;background:#fff;padding:.5rem;border-radius:8px}
 pre.json{background:#05080f;color:#cbd5e1;padding:1rem;border-radius:8px;overflow:auto;font-size:.78rem;line-height:1.45;
-  border:1px solid var(--border)}
+  border:1px solid var(--border);margin:0}
 table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
 th,td{border:1px solid var(--border);padding:.5rem .65rem;text-align:left}
 th{background:var(--bg2);color:var(--muted)}
@@ -80,6 +91,54 @@ h1.doc-title{margin-top:0}
 footer{margin-top:2rem;text-align:center;font-size:.8rem;color:#5c708a}
 footer a{color:#7d93b0}
 CSS;
+}
+
+function sanctum_tmp_copy_script(): string
+{
+    return <<<'JS'
+<script>
+(function () {
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  function flash(btn) {
+    var prev = btn.textContent;
+    btn.classList.add('copied');
+    btn.textContent = 'Copied';
+    setTimeout(function () {
+      btn.classList.remove('copied');
+      btn.textContent = prev;
+    }, 1400);
+  }
+  window.sanctumTmpCopy = function (btn) {
+    var text = btn.getAttribute('data-copy') || '';
+    var target = btn.getAttribute('data-copy-target');
+    if (target) {
+      var el = document.getElementById(target);
+      if (el) text = el.textContent || '';
+    }
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash(btn); }).catch(function () {
+        fallbackCopy(text);
+        flash(btn);
+      });
+    } else {
+      fallbackCopy(text);
+      flash(btn);
+    }
+  };
+})();
+</script>
+JS;
 }
 
 function sanctum_tmp_page_shell_start(string $title, string $subtitle = ''): void
@@ -94,10 +153,33 @@ function sanctum_tmp_page_shell_start(string $title, string $subtitle = ''): voi
     echo '</div></header><main class="card">';
 }
 
-function sanctum_tmp_page_shell_end(): void
+function sanctum_tmp_page_shell_end(bool $withCopy = false): void
 {
     echo '</main><footer>Part of <a href="https://sanctumos.org/">Sanctum</a> · ';
-    echo '<a href="/docs/api/">API</a> · <a href="/AGENTS.md">Agents</a></footer></div></body></html>';
+    echo '<a href="/docs/api/">API</a> · <a href="/AGENTS.md">Agents</a></footer></div>';
+    if ($withCopy) {
+        echo sanctum_tmp_copy_script();
+    }
+    echo '</body></html>';
+}
+
+/** Render a labeled URL with a copy-to-clipboard control. */
+function sanctum_tmp_link_row(string $label, string $url, string $hint = ''): void
+{
+    $safeUrl = htmlspecialchars($url);
+    $safeLabel = htmlspecialchars($label);
+    $attrUrl = htmlspecialchars($url, ENT_QUOTES);
+    echo '<div class="link-row">';
+    echo '<div class="link-body"><strong>' . $safeLabel . '</strong>';
+    if ($hint !== '') {
+        echo ' <span class="meta">' . htmlspecialchars($hint) . '</span><br>';
+    } else {
+        echo '<br>';
+    }
+    echo '<a href="' . $safeUrl . '">' . $safeUrl . '</a></div>';
+    echo '<button type="button" class="copy-btn" data-copy="' . $attrUrl
+        . '" onclick="sanctumTmpCopy(this)" aria-label="Copy ' . $safeLabel . '">Copy</button>';
+    echo '</div>';
 }
 
 /** Render batch/single QR block matching Sanctum Temp styling. */
@@ -357,8 +439,8 @@ function render_view(array $row, string $id, string $filename): void
     echo '<tr><th>MIME</th><td>' . htmlspecialchars((string) ($row['mime_type'] ?? '')) . '</td></tr>';
     echo '<tr><th>Expires</th><td>' . htmlspecialchars($expires) . '</td></tr></table>';
     echo '<p class="links"><a class="btn" href="' . htmlspecialchars($direct) . '">Direct download</a></p>';
-    echo '<p class="meta">Use the direct URL for bots, Venice, and scripts.</p>';
-    sanctum_tmp_page_shell_end();
+    sanctum_tmp_link_row('Direct link', $direct, '(APIs / Venice / scripts)');
+    sanctum_tmp_page_shell_end(true);
 }
 
 /** @param array{status: string, data: array<string, string>} $payload */
@@ -374,18 +456,20 @@ function render_upload_success(array $payload): void
     echo '<h2>Upload complete</h2>';
     echo '<p class="lead"><strong>' . htmlspecialchars($filename) . '</strong> is live until expiry.</p>';
     echo '<div class="links">';
-    echo '<p><strong>View page</strong><br><a href="' . htmlspecialchars($viewUrl) . '">'
-        . htmlspecialchars($viewUrl) . '</a></p>';
-    echo '<p><strong>Direct link</strong> (APIs / Venice / scripts)<br><a href="'
-        . htmlspecialchars($directUrl) . '">' . htmlspecialchars($directUrl) . '</a></p>';
+    sanctum_tmp_link_row('View page', $viewUrl);
+    sanctum_tmp_link_row('Direct link', $directUrl, '(APIs / Venice / scripts)');
     echo '</div>';
 
     sanctum_tmp_render_qr_block($json);
 
-    echo '<p class="meta">Raw API response</p>';
-    echo '<pre class="json">' . htmlspecialchars($json) . '</pre>';
+    echo '<div class="json-block">';
+    echo '<div class="json-head"><p class="meta">Raw API response</p>';
+    echo '<button type="button" class="copy-btn" data-copy-target="upload-json"'
+        . ' onclick="sanctumTmpCopy(this)" aria-label="Copy JSON">Copy JSON</button></div>';
+    echo '<pre class="json" id="upload-json">' . htmlspecialchars($json) . '</pre>';
+    echo '</div>';
     echo '<p><a class="btn" href="/">Upload another</a></p>';
-    sanctum_tmp_page_shell_end();
+    sanctum_tmp_page_shell_end(true);
 }
 
 /**
