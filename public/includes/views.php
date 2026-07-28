@@ -503,7 +503,13 @@ function render_upload_success_multi(array $payload): void
         echo '</td><td>';
         if ($status === 'success' && !empty($row['direct_url'])) {
             $direct = (string) $row['direct_url'];
-            echo '<a href="' . htmlspecialchars($direct) . '">' . htmlspecialchars($direct) . '</a>';
+            $attr = htmlspecialchars($direct, ENT_QUOTES);
+            echo '<div class="link-row" style="margin:0">';
+            echo '<div class="link-body"><a href="' . htmlspecialchars($direct) . '">'
+                . htmlspecialchars($direct) . '</a></div>';
+            echo '<button type="button" class="copy-btn" data-copy="' . $attr
+                . '" onclick="sanctumTmpCopy(this)" aria-label="Copy direct link">Copy</button>';
+            echo '</div>';
         } else {
             echo '—';
         }
@@ -516,10 +522,14 @@ function render_upload_success_multi(array $payload): void
         'Scan to copy the batch API JSON on your phone — no OCR.'
     );
 
-    echo '<p class="meta">Raw API response</p>';
-    echo '<pre class="json">' . htmlspecialchars($json) . '</pre>';
+    echo '<div class="json-block">';
+    echo '<div class="json-head"><p class="meta">Raw API response</p>';
+    echo '<button type="button" class="copy-btn" data-copy-target="upload-json-multi"'
+        . ' onclick="sanctumTmpCopy(this)" aria-label="Copy JSON">Copy JSON</button></div>';
+    echo '<pre class="json" id="upload-json-multi">' . htmlspecialchars($json) . '</pre>';
+    echo '</div>';
     echo '<p><a class="btn" href="/">Upload more</a></p>';
-    sanctum_tmp_page_shell_end();
+    sanctum_tmp_page_shell_end(true);
 }
 
 /** Browser page after JS multi-upload completes (reads sessionStorage client-side). */
@@ -530,7 +540,12 @@ function render_upload_results_page(): void
     echo '<p class="lead" id="results-lead">Loading results…</p>';
     echo '<table class="results-table" id="results-table" hidden><thead><tr><th>File</th><th>Direct link</th><th>View</th></tr></thead><tbody></tbody></table>';
     echo '<div id="results-qr" hidden></div>';
-    echo '<p class="meta">Raw JSON</p><pre class="json" id="results-json"></pre>';
+    echo '<div class="json-block">';
+    echo '<div class="json-head"><p class="meta">Raw JSON</p>';
+    echo '<button type="button" class="copy-btn" data-copy-target="results-json"'
+        . ' onclick="sanctumTmpCopy(this)" aria-label="Copy JSON">Copy JSON</button></div>';
+    echo '<pre class="json" id="results-json"></pre>';
+    echo '</div>';
     echo '<p><a class="btn" href="/">Upload more</a></p>';
     echo '<script>(function(){';
     echo 'const raw=sessionStorage.getItem("sanctum_tmp_upload_results");';
@@ -540,9 +555,30 @@ function render_upload_results_page(): void
     echo 'document.getElementById("results-lead").innerHTML="<strong>"+rows.length+"</strong> file(s) uploaded.";';
     echo 'const tb=document.querySelector("#results-table tbody");rows.forEach(r=>{';
     echo 'const tr=document.createElement("tr");';
-    echo 'tr.innerHTML="<td>"+escapeHtml(r.filename||"")+"</td>"+';
-    echo '"<td><a href=\\""+escapeHtml(r.direct_url||"")+"\\">"+escapeHtml(r.direct_url||"")+"</a></td>"+';
-    echo '"<td><a href=\\""+escapeHtml(r.url||"")+"\\">View</a></td>";tb.appendChild(tr);});';
+    echo 'const direct=r.direct_url||"";';
+    echo 'const view=r.url||"";';
+    echo 'const tdFile=document.createElement("td");tdFile.textContent=r.filename||"";';
+    echo 'const tdDirect=document.createElement("td");';
+    echo 'if(direct){';
+    echo '  const wrap=document.createElement("div");wrap.className="link-row";wrap.style.margin="0";';
+    echo '  const body=document.createElement("div");body.className="link-body";';
+    echo '  const a=document.createElement("a");a.href=direct;a.textContent=direct;body.appendChild(a);';
+    echo '  const btn=document.createElement("button");btn.type="button";btn.className="copy-btn";';
+    echo '  btn.setAttribute("data-copy",direct);btn.setAttribute("aria-label","Copy direct link");';
+    echo '  btn.textContent="Copy";btn.onclick=function(){sanctumTmpCopy(btn);};';
+    echo '  wrap.appendChild(body);wrap.appendChild(btn);tdDirect.appendChild(wrap);';
+    echo '}else{tdDirect.textContent="—";}';
+    echo 'const tdView=document.createElement("td");';
+    echo 'if(view){';
+    echo '  const wrap=document.createElement("div");wrap.className="link-row";wrap.style.margin="0";';
+    echo '  const body=document.createElement("div");body.className="link-body";';
+    echo '  const a=document.createElement("a");a.href=view;a.textContent="View";body.appendChild(a);';
+    echo '  const btn=document.createElement("button");btn.type="button";btn.className="copy-btn";';
+    echo '  btn.setAttribute("data-copy",view);btn.setAttribute("aria-label","Copy view link");';
+    echo '  btn.textContent="Copy";btn.onclick=function(){sanctumTmpCopy(btn);};';
+    echo '  wrap.appendChild(body);wrap.appendChild(btn);tdView.appendChild(wrap);';
+    echo '}else{tdView.textContent="—";}';
+    echo 'tr.appendChild(tdFile);tr.appendChild(tdDirect);tr.appendChild(tdView);tb.appendChild(tr);});';
     echo 'document.getElementById("results-table").hidden=false;';
     echo 'const payload={status:"success",data:{files:rows,count:rows.length,succeeded:rows.length,failed:0}};';
     echo 'const jsonText=JSON.stringify(payload);';
@@ -551,9 +587,8 @@ function render_upload_results_page(): void
     echo '.then(r=>r.ok?r.text():Promise.reject(new Error("QR HTTP "+r.status)))';
     echo '.then(html=>{const el=document.getElementById("results-qr");el.innerHTML=html;el.hidden=false;})';
     echo '.catch(()=>{const el=document.getElementById("results-qr");el.innerHTML=\'<div class="qr-wrap"><p class="err">QR unavailable; use the JSON block below.</p></div>\';el.hidden=false;});';
-    echo 'function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}';
     echo '})();</script>';
-    sanctum_tmp_page_shell_end();
+    sanctum_tmp_page_shell_end(true);
 }
 
 function render_upload_error(string $message, int $status = 400): void
