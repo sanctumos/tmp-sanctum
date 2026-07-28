@@ -61,12 +61,13 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-ser
 .btn:hover{filter:brightness(1.06)}
 .links a{color:var(--accent);word-break:break-all}
 .links p{margin:.75rem 0}
-.link-row{display:flex;align-items:flex-start;gap:.5rem;margin:.75rem 0}
-.link-row .link-body{flex:1;min-width:0}
-.link-row .link-body strong{display:block;margin-bottom:.2rem}
+.link-row{margin:.75rem 0}
+.link-row .link-body > strong{display:block}
+.link-url-row{display:flex;align-items:flex-start;gap:.5rem;margin-top:.25rem}
+.link-url-row a{flex:1;min-width:0;color:var(--accent);word-break:break-all}
 .copy-btn{flex-shrink:0;padding:.35rem .65rem;border:1px solid var(--border);border-radius:6px;
   background:var(--bg2);color:var(--muted);cursor:pointer;font-size:.78rem;font-weight:600;
-  line-height:1.2;white-space:nowrap}
+  line-height:1.2;white-space:nowrap;align-self:flex-start}
 .copy-btn:hover{color:var(--text);border-color:#3a4f6e}
 .copy-btn.copied{color:var(--ok);border-color:rgba(61,214,140,.45)}
 .json-block{margin:0 0 1rem}
@@ -172,14 +173,13 @@ function sanctum_tmp_link_row(string $label, string $url, string $hint = ''): vo
     echo '<div class="link-row">';
     echo '<div class="link-body"><strong>' . $safeLabel . '</strong>';
     if ($hint !== '') {
-        echo ' <span class="meta">' . htmlspecialchars($hint) . '</span><br>';
-    } else {
-        echo '<br>';
+        echo ' <span class="meta">' . htmlspecialchars($hint) . '</span>';
     }
-    echo '<a href="' . $safeUrl . '">' . $safeUrl . '</a></div>';
+    echo '<div class="link-url-row">';
+    echo '<a href="' . $safeUrl . '">' . $safeUrl . '</a>';
     echo '<button type="button" class="copy-btn" data-copy="' . $attrUrl
         . '" onclick="sanctumTmpCopy(this)" aria-label="Copy ' . $safeLabel . '">Copy</button>';
-    echo '</div>';
+    echo '</div></div></div>';
 }
 
 /** Render batch/single QR block matching Sanctum Temp styling. */
@@ -504,9 +504,8 @@ function render_upload_success_multi(array $payload): void
         if ($status === 'success' && !empty($row['direct_url'])) {
             $direct = (string) $row['direct_url'];
             $attr = htmlspecialchars($direct, ENT_QUOTES);
-            echo '<div class="link-row" style="margin:0">';
-            echo '<div class="link-body"><a href="' . htmlspecialchars($direct) . '">'
-                . htmlspecialchars($direct) . '</a></div>';
+            echo '<div class="link-url-row">';
+            echo '<a href="' . htmlspecialchars($direct) . '">' . htmlspecialchars($direct) . '</a>';
             echo '<button type="button" class="copy-btn" data-copy="' . $attr
                 . '" onclick="sanctumTmpCopy(this)" aria-label="Copy direct link">Copy</button>';
             echo '</div>';
@@ -560,23 +559,21 @@ function render_upload_results_page(): void
     echo 'const tdFile=document.createElement("td");tdFile.textContent=r.filename||"";';
     echo 'const tdDirect=document.createElement("td");';
     echo 'if(direct){';
-    echo '  const wrap=document.createElement("div");wrap.className="link-row";wrap.style.margin="0";';
-    echo '  const body=document.createElement("div");body.className="link-body";';
-    echo '  const a=document.createElement("a");a.href=direct;a.textContent=direct;body.appendChild(a);';
+    echo '  const wrap=document.createElement("div");wrap.className="link-url-row";';
+    echo '  const a=document.createElement("a");a.href=direct;a.textContent=direct;';
     echo '  const btn=document.createElement("button");btn.type="button";btn.className="copy-btn";';
     echo '  btn.setAttribute("data-copy",direct);btn.setAttribute("aria-label","Copy direct link");';
     echo '  btn.textContent="Copy";btn.onclick=function(){sanctumTmpCopy(btn);};';
-    echo '  wrap.appendChild(body);wrap.appendChild(btn);tdDirect.appendChild(wrap);';
+    echo '  wrap.appendChild(a);wrap.appendChild(btn);tdDirect.appendChild(wrap);';
     echo '}else{tdDirect.textContent="—";}';
     echo 'const tdView=document.createElement("td");';
     echo 'if(view){';
-    echo '  const wrap=document.createElement("div");wrap.className="link-row";wrap.style.margin="0";';
-    echo '  const body=document.createElement("div");body.className="link-body";';
-    echo '  const a=document.createElement("a");a.href=view;a.textContent="View";body.appendChild(a);';
+    echo '  const wrap=document.createElement("div");wrap.className="link-url-row";';
+    echo '  const a=document.createElement("a");a.href=view;a.textContent="View";';
     echo '  const btn=document.createElement("button");btn.type="button";btn.className="copy-btn";';
     echo '  btn.setAttribute("data-copy",view);btn.setAttribute("aria-label","Copy view link");';
     echo '  btn.textContent="Copy";btn.onclick=function(){sanctumTmpCopy(btn);};';
-    echo '  wrap.appendChild(body);wrap.appendChild(btn);tdView.appendChild(wrap);';
+    echo '  wrap.appendChild(a);wrap.appendChild(btn);tdView.appendChild(wrap);';
     echo '}else{tdView.textContent="—";}';
     echo 'tr.appendChild(tdFile);tr.appendChild(tdDirect);tr.appendChild(tdView);tb.appendChild(tr);});';
     echo 'document.getElementById("results-table").hidden=false;';
