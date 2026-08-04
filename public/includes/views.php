@@ -420,8 +420,16 @@ function render_api_docs(): void
 function render_view(array $row, string $id, string $filename): void
 {
     $config = sanctum_tmp_config();
+    $view = $config->baseUrl . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
     $direct = $config->baseUrl . $config->dlUrlPrefix . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
     $expires = date('Y-m-d H:i:s T', (int) $row['expires_at']);
+    $payload = UploadApi::successPayload([
+        'view_url' => $view,
+        'direct_url' => $direct,
+        'id' => $id,
+        'filename' => $filename,
+    ]);
+    $json = UploadApi::encodePayload($payload);
 
     if (!ClientMode::wantsBrowserHtml()) {
         header('Content-Type: text/plain; charset=utf-8');
@@ -429,6 +437,7 @@ function render_view(array $row, string $id, string $filename): void
         echo 'size_bytes: ' . ($row['size_bytes'] ?? '') . "\n";
         echo 'mime_type: ' . ($row['mime_type'] ?? '') . "\n";
         echo "expires: {$expires}\n";
+        echo "url: {$view}\n";
         echo "direct_url: {$direct}\n";
         return;
     }
@@ -439,7 +448,19 @@ function render_view(array $row, string $id, string $filename): void
     echo '<tr><th>MIME</th><td>' . htmlspecialchars((string) ($row['mime_type'] ?? '')) . '</td></tr>';
     echo '<tr><th>Expires</th><td>' . htmlspecialchars($expires) . '</td></tr></table>';
     echo '<p class="links"><a class="btn" href="' . htmlspecialchars($direct) . '">Direct download</a></p>';
+    echo '<div class="links">';
+    sanctum_tmp_link_row('View page', $view);
     sanctum_tmp_link_row('Direct link', $direct, '(APIs / Venice / scripts)');
+    echo '</div>';
+
+    sanctum_tmp_render_qr_block($json);
+
+    echo '<div class="json-block">';
+    echo '<div class="json-head"><p class="meta">Raw API response</p>';
+    echo '<button type="button" class="copy-btn" data-copy-target="view-json"'
+        . ' onclick="sanctumTmpCopy(this)" aria-label="Copy JSON">Copy JSON</button></div>';
+    echo '<pre class="json" id="view-json">' . htmlspecialchars($json) . '</pre>';
+    echo '</div>';
     sanctum_tmp_page_shell_end(true);
 }
 

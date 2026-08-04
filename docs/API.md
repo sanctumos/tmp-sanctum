@@ -96,7 +96,7 @@ Legacy alias: **`GET /dl/{id}/{filename}`** (same behavior).
 
 **`GET /{id}/{filename}`**
 
-HTML metadata and download link. Prefer **`direct_url`** for programmatic access.
+HTML metadata, download link, and **QR code** (same API JSON as the upload-success page) for desktop→phone handoff. Prefer **`direct_url`** for programmatic access.
 
 ## Limits (defaults)
 
