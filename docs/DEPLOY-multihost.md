@@ -7,6 +7,7 @@ Handoff checklist for Ada (full provisioning per multihost git-sync pattern).
 1. **DNS:** `tmp.sanctumos.org` → multihost (`64.95.10.156`).
 2. **HTTPS:** valid certificate; `https://tmp.sanctumos.org/` returns upload form.
 3. **Upload size limits (413 fix):** nginx vhost must set `client_max_body_size 100M;` (default 1M causes 413 before PHP). Docroot includes `public/.user.ini` (`upload_max_filesize` / `post_max_size` ≥ 100M) for PHP-FPM.
+3b. **Shortlink routing:** `location /` MUST use `try_files $uri $uri/ /index.php?$query_string;` (not `=404`). Stock `=404` returns nginx 404 for `/{id}/{filename}` before PHP can render the HTML view page. Keep `location ^~ /uploads/` static-only (`try_files $uri =404;`, no PHP).
 4. **Git sync:** `/root/sites/tmp.sanctumos.org.env` exists; `/root/sync.sh tmp.sanctumos.org` succeeds.
 4. **Cron:** standard sync/deploy pair for this vhost.
 5. **Writable dirs** (outside docroot or under `html` as needed):
