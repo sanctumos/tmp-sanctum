@@ -44,8 +44,10 @@ Full API detail: [`docs/API.md`](docs/API.md) in the repo.
 |------|------|
 | `public/api/v1/upload.php` | Upload endpoint |
 | `public/index.php` | Browser router + view pages |
-| `src/UploadService.php` | Storage + SQLite metadata |
+| `src/UploadService.php` | Single-copy storage under uploads/ + SQLite metadata |
 | `tools/purge-expired.php` | Cron TTL purge |
+| `tools/orphan-sweep.php` | Cron orphan dir cleanup |
+| `tools/usage-report.php` | usage_events rollup CLI |
 
 Deploy: multihost git-sync; **`composer install --no-dev`** at repo root (QR on browser uploads). See `docs/DEPLOY-multihost.md`.
 

@@ -14,6 +14,7 @@ final class UsageLog
     public const EVENT_UPLOAD = 'upload';
     public const EVENT_DOWNLOAD = 'download';
     public const EVENT_PURGE = 'purge';
+    public const EVENT_ORPHAN_SWEEP = 'orphan_sweep';
 
     private const UA_MAX_LEN = 500;
 

@@ -42,4 +42,21 @@ final class ClientModeTest extends TestCase
         $_SERVER['HTTP_ACCEPT'] = 'application/json';
         $this->assertTrue(ClientMode::isAutomatedClient());
     }
+
+    public function test_default_browser_wants_html_without_sec_fetch(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible)';
+        $_SERVER['HTTP_ACCEPT'] = '*/*';
+        unset($_SERVER['HTTP_SEC_FETCH_MODE'], $_SERVER['HTTP_SEC_FETCH_DEST']);
+        $this->assertFalse(ClientMode::isAutomatedClient());
+        $this->assertTrue(ClientMode::wantsBrowserHtml());
+    }
+
+    public function test_sec_fetch_document_wants_html(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0';
+        $_SERVER['HTTP_SEC_FETCH_DEST'] = 'document';
+        $_SERVER['HTTP_ACCEPT'] = '*/*';
+        $this->assertTrue(ClientMode::wantsBrowserHtml());
+    }
 }

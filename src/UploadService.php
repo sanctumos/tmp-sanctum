@@ -40,20 +40,15 @@ final class UploadService
         $id = $this->generateId();
         $mime = $this->detectMime($tmpPath, $clientMime, $filename);
 
-        $storageRel = $id . '/' . $filename;
-        $storageAbs = $this->config->storageDir . '/' . $storageRel;
-        $dlRel = $id . '/' . $filename;
-        $dlAbs = $this->config->dlDir . '/' . $dlRel;
+        // Single copy: bytes live only under the public uploads tree (dlDir).
+        // storage_rel is kept for schema back-compat and equals dl_rel.
+        $rel = $id . '/' . $filename;
+        $dlAbs = $this->config->dlDir . '/' . $rel;
 
-        $this->ensureDir(dirname($storageAbs));
         $this->ensureDir(dirname($dlAbs));
 
-        if (!copy($tmpPath, $storageAbs)) {
-            throw new RuntimeException('Failed to store file');
-        }
         if (!copy($tmpPath, $dlAbs)) {
-            @unlink($storageAbs);
-            throw new RuntimeException('Failed to publish direct download');
+            throw new RuntimeException('Failed to store file');
         }
 
         $now = time();
@@ -67,8 +62,8 @@ final class UploadService
             ':filename' => $filename,
             ':mime' => $mime,
             ':size' => $size,
-            ':storage_rel' => $storageRel,
-            ':dl_rel' => $dlRel,
+            ':storage_rel' => $rel,
+            ':dl_rel' => $rel,
             ':created' => $now,
             ':expires' => $expires,
         ]);
@@ -168,22 +163,42 @@ final class UploadService
         return new UsageLog($this->pdo());
     }
 
-    /** @param array<string, mixed> $row */
+    /**
+     * Delete the single published copy under dlDir. Also removes a legacy
+     * storage/ twin if one still exists from pre-single-copy uploads.
+     *
+     * @param array<string, mixed> $row
+     */
     private function deleteFiles(array $row): void
     {
         $paths = [
-            $this->config->storageDir . '/' . $row['storage_rel'],
             $this->config->dlDir . '/' . $row['dl_rel'],
         ];
+        // Legacy dual-write: storage_rel may point at a separate storage/ copy.
+        if (
+            isset($row['storage_rel'])
+            && is_string($row['storage_rel'])
+            && $row['storage_rel'] !== ''
+            && $row['storage_rel'] !== ($row['dl_rel'] ?? null)
+        ) {
+            $paths[] = $this->config->storageDir . '/' . $row['storage_rel'];
+        } elseif (isset($row['id'])) {
+            // Pre-single-copy rows often had storage_rel === dl_rel but the
+            // bytes lived under storage/ as a second copy — try that path too.
+            $legacy = $this->config->storageDir . '/' . $row['id'] . '/' . ($row['filename'] ?? '');
+            if (is_file($legacy)) {
+                $paths[] = $legacy;
+            }
+        }
         foreach ($paths as $path) {
             if (is_file($path)) {
                 @unlink($path);
             }
         }
-        $idDirStorage = $this->config->storageDir . '/' . $row['id'];
         $idDirDl = $this->config->dlDir . '/' . $row['id'];
-        $this->removeDirIfEmpty($idDirStorage);
+        $idDirStorage = $this->config->storageDir . '/' . $row['id'];
         $this->removeDirIfEmpty($idDirDl);
+        $this->removeDirIfEmpty($idDirStorage);
     }
 
     private function removeDirIfEmpty(string $dir): void

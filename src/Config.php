@@ -47,10 +47,12 @@ final class Config
             '/'
         );
         $this->dbPath = (string) ($overrides['db_path'] ?? $this->rootDir . '/db/tmp-sanctum.db');
+        // Legacy dual-write path. New uploads write ONLY to dlDir; storageDir is
+        // retained so OrphanSweeper / purge can clean leftover storage/{id}/ trees.
         $this->storageDir = (string) ($overrides['storage_dir'] ?? $this->rootDir . '/storage');
-        // Downloads are published under an `uploads/` directory so the multihost
-        // deploy (rsync -a --delete with --exclude='uploads/') preserves them
-        // across the every-2-minute deploy instead of wiping them.
+        // Single copy of bytes: published under `uploads/` so multihost deploy
+        // (rsync -a --delete with --exclude='uploads/') preserves them across
+        // the every-2-minute deploy instead of wiping them.
         $defaultDl = is_dir($this->rootDir . '/html')
             ? $this->rootDir . '/html/uploads'
             : $this->rootDir . '/public/uploads';

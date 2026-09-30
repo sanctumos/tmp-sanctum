@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS uploads (
     filename TEXT NOT NULL,
     mime_type TEXT,
     size_bytes INTEGER NOT NULL,
+    -- storage_rel kept for back-compat; new uploads set it equal to dl_rel
+    -- (bytes live only under the public uploads / dlDir tree — no storage/ twin).
     storage_rel TEXT NOT NULL,
     dl_rel TEXT NOT NULL,
     created_at INTEGER NOT NULL,
