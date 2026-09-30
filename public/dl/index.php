@@ -42,6 +42,8 @@ if (!is_file($path)) {
     exit('Not found');
 }
 
+$service->recordDownload($row);
+
 $mime = (string) ($row['mime_type'] ?: 'application/octet-stream');
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . (string) filesize($path));

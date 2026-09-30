@@ -73,6 +73,17 @@ final class UploadService
             ':expires' => $expires,
         ]);
 
+        $this->usageLog()->record(
+            UsageLog::EVENT_UPLOAD,
+            $id,
+            $filename,
+            $mime,
+            (int) $size,
+            UsageLog::clientIpFromServer($_SERVER),
+            UsageLog::userAgentFromServer($_SERVER),
+            $now,
+        );
+
         $viewUrl = $this->config->baseUrl . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
         $directUrl = $this->config->baseUrl . $this->config->dlUrlPrefix . '/' . rawurlencode($id) . '/' . rawurlencode($filename);
 
@@ -82,6 +93,24 @@ final class UploadService
             'id' => $id,
             'filename' => $filename,
         ];
+    }
+
+    /**
+     * Log a successful download serve (PHP fallthrough path).
+     *
+     * @param array<string, mixed> $row uploads row
+     */
+    public function recordDownload(array $row): void
+    {
+        $this->usageLog()->record(
+            UsageLog::EVENT_DOWNLOAD,
+            isset($row['id']) ? (string) $row['id'] : null,
+            isset($row['filename']) ? (string) $row['filename'] : null,
+            isset($row['mime_type']) ? (string) $row['mime_type'] : null,
+            isset($row['size_bytes']) ? (int) $row['size_bytes'] : null,
+            UsageLog::clientIpFromServer($_SERVER),
+            UsageLog::userAgentFromServer($_SERVER),
+        );
     }
 
     public function getForDownload(string $id, string $filename): ?array
@@ -110,17 +139,33 @@ final class UploadService
     public function purgeExpired(): int
     {
         $now = time();
-        $stmt = $this->pdo()->prepare('SELECT id, filename, storage_rel, dl_rel FROM uploads WHERE expires_at < :now');
+        $stmt = $this->pdo()->prepare(
+            'SELECT id, filename, mime_type, size_bytes, storage_rel, dl_rel
+             FROM uploads WHERE expires_at < :now'
+        );
         $stmt->execute([':now' => $now]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $count = 0;
+        $log = $this->usageLog();
         foreach ($rows as $row) {
             $this->deleteFiles($row);
             $del = $this->pdo()->prepare('DELETE FROM uploads WHERE id = :id AND filename = :filename');
             $del->execute([':id' => $row['id'], ':filename' => $row['filename']]);
+            $log->record(
+                UsageLog::EVENT_PURGE,
+                (string) $row['id'],
+                (string) $row['filename'],
+                isset($row['mime_type']) ? (string) $row['mime_type'] : null,
+                isset($row['size_bytes']) ? (int) $row['size_bytes'] : null,
+            );
             $count++;
         }
         return $count;
+    }
+
+    private function usageLog(): UsageLog
+    {
+        return new UsageLog($this->pdo());
     }
 
     /** @param array<string, mixed> $row */
