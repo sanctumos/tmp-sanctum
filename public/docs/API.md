@@ -130,7 +130,7 @@ This endpoint does **not** replace upload for agents. Broca / Venice keep using 
 
 ## Browser upload
 
-**`GET /`** — QR/paste studio (default) plus Files tab. Small payloads try QR first (ephemeral); override hosts as a file. **`POST /`** with multipart `file` still returns an HTML result page. API clients should use **`/api/v1/upload.php`**.
+**`GET /`** — Files tab by default; QR / paste tab for encode (ephemeral by default). A single small text-like file chosen on Files is pushed to the QR tab. **`POST /`** with multipart `file` still returns an HTML result page. API clients should use **`/api/v1/upload.php`**.
 
 ## Related
 

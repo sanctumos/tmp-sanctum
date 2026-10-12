@@ -6,7 +6,7 @@ Sanctum ephemeral file exchange. Hostname: **`tmp.sanctumos.org`**.
 
 - Short-lived uploads for **Broca → Athena** image attachments (Venice / `image_interpret` need a **GET**-able URL).
 - Fallback when **tmpfiles.org** direct URLs fail (HTML interstitial instead of raw bytes).
-- Human **desktop → phone** handoff: browser `/` tries QR-of-payload first (ephemeral); file host on override/fallback.
+- Human **desktop → phone** handoff: browser `/` defaults to Files; small text-like picks open the QR tab (ephemeral encode; optional persist / host-as-file).
 - Full branded QR studio remains at **qr.decisionsciencecorp.com** (not replaced).
 
 ## What agents should call

@@ -1,5 +1,5 @@
 /**
- * Sanctum Temp browser studio — QR-first for encodable payloads, file-host fallback.
+ * Sanctum Temp browser studio — Files default; small text-like picks push to QR tab.
  * upload.php contract for agents is unchanged; this UI is human click-through only.
  */
 (function () {
@@ -7,7 +7,7 @@
 
   var encodeEndpoint = '/api/v1/encode.php';
   var uploadEndpoint = '/api/v1/upload.php';
-  var softMaxBytes = 3500; // try encode; server falls back on capacity failure
+  var softMaxBytes = 3500; // offer QR tab; server still enforces capacity on encode
 
   var $tabQr = document.getElementById('tab-qr');
   var $tabFiles = document.getElementById('tab-files');
@@ -36,13 +36,12 @@
   var $resultImg = document.getElementById('qr-result-img');
   var $resultMeta = document.getElementById('qr-result-meta');
   var $resultEncoded = document.getElementById('qr-result-encoded');
-  var $forceFile = document.getElementById('force-file-host');
 
   var selectedType = 'auto';
   var logoBase64 = null;
   var pendingSuggestion = null;
 
-  function setTab( which) {
+  function setTab(which) {
     var qr = which === 'qr';
     $tabQr.classList.toggle('is-active', qr);
     $tabFiles.classList.toggle('is-active', !qr);
@@ -231,7 +230,7 @@
     });
   }
 
-  // ——— Files tab: QR-first for small files unless forced ———
+  // ——— Files tab (default): upload bytes; single small text-like → QR tab ———
   var maxBatch = parseInt(document.body.getAttribute('data-max-batch') || '20', 10) || 20;
   var concurrency = 3;
   var drop = document.getElementById('drop-zone');
@@ -249,15 +248,64 @@
     return (n / 1048576).toFixed(1) + ' MiB';
   }
 
-  function setItems(files) {
+  function looksTextLike(file) {
+    var t = (file.type || '').toLowerCase();
+    if (t.indexOf('text/') === 0) return true;
+    if (t === 'application/json' || t === 'application/xml' || t === 'application/javascript') return true;
+    var n = (file.name || '').toLowerCase();
+    if (/\.(txt|md|csv|json|log|url|vcard|vcf|ics|xml|html?|css|js|ts|py|sh|env|ya?ml|toml|ini|conf|cfg)$/.test(n)) {
+      return true;
+    }
+    return t === '';
+  }
+
+  function isQrCandidate(file) {
+    return file && file.size > 0 && file.size <= softMaxBytes && looksTextLike(file);
+  }
+
+  function readFileAsText(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || '')); };
+      reader.onerror = function () { reject(new Error('read failed')); };
+      reader.readAsText(file);
+    });
+  }
+
+  async function pushSmallFileToQr(file) {
+    var text = await readFileAsText(file);
+    if (text.indexOf('\0') !== -1) {
+      return false;
+    }
+    $content.value = text;
+    $result.hidden = true;
+    hideSuggest();
+    setTab('qr');
+    setStatus(
+      '“' + file.name + '” is small enough for a QR — contents loaded. Hit Make QR, or Host as file to store bytes.'
+    );
+    if ($content.focus) $content.focus();
+    return true;
+  }
+
+  async function setItems(files) {
     var list = Array.from(files || []);
     if (!list.length) return;
+
+    // Single small text-like file → QR tab (do not queue for upload).
+    if (list.length === 1 && isQrCandidate(list[0]) && items.length === 0) {
+      try {
+        var pushed = await pushSmallFileToQr(list[0]);
+        if (pushed) return;
+      } catch (e) { /* fall through to file queue */ }
+    }
+
     var room = maxBatch - items.length;
     if (room <= 0) { alert('Maximum ' + maxBatch + ' files per batch.'); return; }
     var slice = list.slice(0, room);
     if (list.length > room) alert('Only the first ' + room + ' file(s) were added (batch limit ' + maxBatch + ').');
     slice.forEach(function (f) {
-      items.push({ file: f, status: 'queued', progress: 0, result: null, error: '', mode: null });
+      items.push({ file: f, status: 'queued', progress: 0, result: null, error: '' });
     });
     renderFiles();
   }
@@ -282,8 +330,8 @@
       var st = document.createElement('span');
       st.className = 'file-status' + (it.status === 'done' ? ' ok' : it.status === 'error' ? ' err' : '');
       var label = 'Queued';
-      if (it.status === 'uploading') label = 'Working…';
-      else if (it.status === 'done') label = it.mode === 'qr' ? 'QR ready' : 'Uploaded';
+      if (it.status === 'uploading') label = 'Uploading…';
+      else if (it.status === 'done') label = 'Uploaded';
       else if (it.status === 'error') label = it.error || 'Failed';
       st.textContent = label;
       head.appendChild(name);
@@ -306,46 +354,10 @@
     else summary.textContent = items.length + ' file(s) ready.';
   }
 
-  function readFileAsText(file) {
-    return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function () { resolve(String(reader.result || '')); };
-      reader.onerror = function () { reject(new Error('read failed')); };
-      reader.readAsText(file);
-    });
-  }
-
-  async function tryQrFile(it) {
-    var text = await readFileAsText(it.file);
-    var res = await fetch(encodeEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        content: text,
-        type: 'text',
-        format: 'svg',
-        ecl: 'M',
-        persist: false,
-        filename: it.file.name
-      })
-    });
-    var payload = null;
-    try { payload = await res.json(); } catch (e) {}
-    if (res.ok && payload && payload.status === 'success') {
-      it.status = 'done';
-      it.progress = 1;
-      it.mode = 'qr';
-      it.result = payload.data;
-      return true;
-    }
-    return false;
-  }
-
   function uploadOne(it) {
     return new Promise(function (resolve) {
       it.status = 'uploading';
       it.progress = 0;
-      it.mode = 'file';
       renderFiles();
       var xhr = new XMLHttpRequest();
       xhr.open('POST', uploadEndpoint);
@@ -374,19 +386,6 @@
     });
   }
 
-  async function processOne(it) {
-    it.status = 'uploading';
-    renderFiles();
-    var force = $forceFile && $forceFile.checked;
-    if (!force && it.file.size > 0 && it.file.size <= softMaxBytes) {
-      try {
-        var ok = await tryQrFile(it);
-        if (ok) { renderFiles(); return; }
-      } catch (e) { /* fall through */ }
-    }
-    await uploadOne(it);
-  }
-
   async function runQueue() {
     uploadBtn.disabled = true;
     var pending = items.filter(function (i) { return i.status === 'queued'; });
@@ -394,20 +393,12 @@
     async function worker() {
       while (idx < pending.length) {
         var cur = pending[idx++];
-        await processOne(cur);
+        await uploadOne(cur);
       }
     }
     await Promise.all(Array.from({ length: Math.min(concurrency, pending.length) }, function () { return worker(); }));
 
-    var qrDone = items.filter(function (i) { return i.status === 'done' && i.mode === 'qr' && i.result; });
-    var fileDone = items.filter(function (i) { return i.status === 'done' && i.mode === 'file' && i.result; });
-
-    if (qrDone.length === 1 && fileDone.length === 0) {
-      setTab('qr');
-      showQrResult(qrDone[0].result);
-      setStatus('Encoded file contents as QR (ephemeral). Use Files → “Force file host” to store bytes.');
-      return;
-    }
+    var fileDone = items.filter(function (i) { return i.status === 'done' && i.result; });
     if (fileDone.length) {
       sessionStorage.setItem('sanctum_tmp_upload_results', JSON.stringify(fileDone.map(function (i) { return i.result; })));
       location.href = '/?uploaded=1';

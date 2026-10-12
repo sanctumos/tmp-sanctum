@@ -38,10 +38,31 @@ def main() -> int:
             for name, w, h in (("desktop", 1280, 800), ("mobile", 390, 844)):
                 page = browser.new_page(viewport={"width": w, "height": h})
                 page.goto(f"http://127.0.0.1:{port}/", wait_until="networkidle", timeout=30000)
-                page.wait_for_selector("#qr-content", timeout=10000)
+                page.wait_for_selector("#drop-zone", timeout=10000)
+                assert page.locator("#tab-files").get_attribute("aria-selected") == "true"
+                assert page.locator("#panel-files").is_visible()
+                assert page.locator("#panel-qr").is_hidden()
                 path = OUT / f"home-{name}.png"
                 page.screenshot(path=str(path), full_page=True)
                 print("wrote", path)
+
+            # Small text file on Files → push to QR tab with contents loaded
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            page.goto(f"http://127.0.0.1:{port}/", wait_until="networkidle", timeout=30000)
+            page.set_input_files("#file-input", {
+                "name": "note.txt",
+                "mimeType": "text/plain",
+                "buffer": b"https://example.com/handoff",
+            })
+            page.wait_for_function(
+                "() => document.getElementById('tab-qr')?.getAttribute('aria-selected') === 'true'",
+                timeout=5000,
+            )
+            assert page.locator("#panel-qr").is_visible()
+            assert "example.com/handoff" in (page.locator("#qr-content").input_value() or "")
+            path = OUT / "home-small-file-to-qr.png"
+            page.screenshot(path=str(path), full_page=True)
+            print("wrote", path)
             browser.close()
     finally:
         php.terminate()

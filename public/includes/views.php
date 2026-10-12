@@ -237,20 +237,37 @@ function render_home(): void
     $maxBatch = $config->maxBatchSize;
     sanctum_tmp_page_shell_start('Upload', 'tmp.sanctumos.org');
     echo '<h2>Share bytes or a QR</h2>';
-    echo '<p class="lead">Paste a link, note, or small payload → we try a QR first (ephemeral by default). ';
-    echo 'Larger files still get a short-lived download URL. Agents keep using the upload API.</p>';
+    echo '<p class="lead">Drop a file for a short-lived download URL. Tiny text-like files get offered the QR tab instead. ';
+    echo 'Paste / QR studio stays one click away. Agents keep using the upload API.</p>';
     echo '<p class="meta">Files up to <strong>' . htmlspecialchars((string) $maxMb) . ' MiB</strong> · ';
     echo 'TTL ~<strong>' . htmlspecialchars((string) $ttlHours) . ' hours</strong> · ';
     echo 'batch max <strong>' . htmlspecialchars((string) $maxBatch) . '</strong> · ';
-    echo 'QR path = try-encode, fall back on failure</p>';
+    echo 'QR = try-encode, fall back on failure · ephemeral by default</p>';
 
     echo '<div class="tabs" role="tablist">';
-    echo '<button type="button" class="tab is-active" id="tab-qr" role="tab" aria-selected="true">QR / paste</button>';
-    echo '<button type="button" class="tab" id="tab-files" role="tab" aria-selected="false">Files</button>';
+    echo '<button type="button" class="tab is-active" id="tab-files" role="tab" aria-selected="true">Files</button>';
+    echo '<button type="button" class="tab" id="tab-qr" role="tab" aria-selected="false">QR / paste</button>';
     echo '</div>';
 
-    // ——— QR panel (default) ———
-    echo '<div id="panel-qr" role="tabpanel">';
+    // ——— Files panel (default) ———
+    echo '<div id="panel-files" role="tabpanel">';
+    echo '<p class="meta">Host files under <code>/uploads/</code> with a short TTL. ';
+    echo 'A single small text-like file switches you to the QR tab so you can encode it instead of storing bytes.</p>';
+
+    echo '<div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop files">';
+    echo '<p><strong>Drag files here</strong> or click to browse</p>';
+    echo '<p class="hint">Multiple files supported</p>';
+    echo '<input type="file" id="file-input" multiple hidden></div>';
+
+    echo '<div class="file-queue" id="file-queue" hidden></div>';
+    echo '<div class="upload-actions" id="upload-actions" hidden>';
+    echo '<button class="btn" type="button" id="upload-btn">Upload</button>';
+    echo '<button class="btn secondary" type="button" id="clear-btn">Clear</button>';
+    echo '<p class="meta" id="upload-summary"></p></div>';
+    echo '</div>';
+
+    // ——— QR panel ———
+    echo '<div id="panel-qr" role="tabpanel" hidden>';
     echo '<div class="type-toggle" role="radiogroup" aria-label="QR content type">';
     foreach (['auto' => 'Auto', 'url' => 'URL', 'email' => 'Email', 'tel' => 'Phone', 'text' => 'Plain text'] as $k => $label) {
         $active = $k === 'auto' ? ' is-active' : '';
@@ -300,24 +317,6 @@ function render_home(): void
     echo '<div class="qr-wrap"><img id="qr-result-img" alt="QR code"><p class="meta" id="qr-result-meta"></p></div>';
     echo '<p class="meta">Encoded payload</p><pre class="json" id="qr-result-encoded"></pre>';
     echo '</div></div>';
-
-    // ——— Files panel ———
-    echo '<div id="panel-files" role="tabpanel" hidden>';
-    echo '<p class="meta">Small files try the QR path first (contents encoded, nothing on disk). ';
-    echo 'Check the box to skip QR and always store under <code>/uploads/</code>.</p>';
-    echo '<label class="check-row"><input type="checkbox" id="force-file-host"> Force file host (skip QR attempt)</label>';
-
-    echo '<div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop files">';
-    echo '<p><strong>Drag files here</strong> or click to browse</p>';
-    echo '<p class="hint">Multiple files supported</p>';
-    echo '<input type="file" id="file-input" multiple hidden></div>';
-
-    echo '<div class="file-queue" id="file-queue" hidden></div>';
-    echo '<div class="upload-actions" id="upload-actions" hidden>';
-    echo '<button class="btn" type="button" id="upload-btn">Upload / encode</button>';
-    echo '<button class="btn secondary" type="button" id="clear-btn">Clear</button>';
-    echo '<p class="meta" id="upload-summary"></p></div>';
-    echo '</div>';
 
     echo '<div class="doc-links">';
     echo '<a href="/docs/api/">API documentation</a>';
