@@ -91,6 +91,30 @@ h1.doc-title{margin-top:0}
 .err{color:var(--err)}
 footer{margin-top:2rem;text-align:center;font-size:.8rem;color:#5c708a}
 footer a{color:#7d93b0}
+.tabs{display:flex;gap:.5rem;margin:0 0 1.25rem;flex-wrap:wrap}
+.tab{padding:.45rem .9rem;border:1px solid var(--border);border-radius:999px;background:transparent;
+  color:var(--muted);cursor:pointer;font-weight:600;font-size:.88rem}
+.tab.is-active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
+.type-toggle{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 1rem}
+.type-pill{padding:.35rem .75rem;border:1px solid var(--border);border-radius:999px;background:var(--bg2);
+  color:var(--muted);cursor:pointer;font-size:.82rem;font-weight:600}
+.type-pill.is-active{border-color:var(--accent);color:var(--text)}
+.form-label{display:block;font-size:.85rem;color:var(--muted);margin:0 0 .35rem;font-weight:600}
+.form-textarea,.form-input{width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);padding:.65rem .75rem;font:inherit}
+.form-textarea{min-height:6rem;resize:vertical}
+.studio-grid{display:grid;gap:1rem;margin:1rem 0}
+.studio-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+@media(max-width:560px){.studio-row{grid-template-columns:1fr}}
+.suggest{margin:1rem 0;padding:.85rem 1rem;border:1px solid #3a4f6e;border-radius:10px;background:var(--bg2)}
+.suggest-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.65rem}
+.check-row{display:flex;align-items:center;gap:.5rem;margin:.75rem 0;color:var(--muted);font-size:.9rem}
+.check-row input{accent-color:var(--accent)}
+.logo-preview{display:flex;align-items:center;gap:.75rem;margin-top:.5rem}
+.logo-preview img{width:48px;height:48px;object-fit:contain;background:#fff;border-radius:8px;padding:4px}
+#qr-result{margin-top:1.25rem}
+#qr-status{min-height:1.25rem;margin:.75rem 0;font-size:.9rem;color:var(--muted)}
+[hidden]{display:none!important}
 CSS;
 }
 
@@ -212,12 +236,76 @@ function render_home(): void
     $ttlHours = max(1, (int) round($config->ttlSeconds / 3600));
     $maxBatch = $config->maxBatchSize;
     sanctum_tmp_page_shell_start('Upload', 'tmp.sanctumos.org');
-    echo '<h2>Drop files</h2>';
-    echo '<p class="lead">Temporary uploads for Sanctum workflows — share links, scan QR codes, or hand bytes to an agent. ';
-    echo 'Files expire automatically.</p>';
-    echo '<p class="meta">Up to <strong>' . htmlspecialchars((string) $maxMb) . ' MiB</strong> per file · ';
+    echo '<h2>Share bytes or a QR</h2>';
+    echo '<p class="lead">Paste a link, note, or small payload → we try a QR first (ephemeral by default). ';
+    echo 'Larger files still get a short-lived download URL. Agents keep using the upload API.</p>';
+    echo '<p class="meta">Files up to <strong>' . htmlspecialchars((string) $maxMb) . ' MiB</strong> · ';
     echo 'TTL ~<strong>' . htmlspecialchars((string) $ttlHours) . ' hours</strong> · ';
-    echo 'max <strong>' . htmlspecialchars((string) $maxBatch) . '</strong> files per batch</p>';
+    echo 'batch max <strong>' . htmlspecialchars((string) $maxBatch) . '</strong> · ';
+    echo 'QR path = try-encode, fall back on failure</p>';
+
+    echo '<div class="tabs" role="tablist">';
+    echo '<button type="button" class="tab is-active" id="tab-qr" role="tab" aria-selected="true">QR / paste</button>';
+    echo '<button type="button" class="tab" id="tab-files" role="tab" aria-selected="false">Files</button>';
+    echo '</div>';
+
+    // ——— QR panel (default) ———
+    echo '<div id="panel-qr" role="tabpanel">';
+    echo '<div class="type-toggle" role="radiogroup" aria-label="QR content type">';
+    foreach (['auto' => 'Auto', 'url' => 'URL', 'email' => 'Email', 'tel' => 'Phone', 'text' => 'Plain text'] as $k => $label) {
+        $active = $k === 'auto' ? ' is-active' : '';
+        $checked = $k === 'auto' ? 'true' : 'false';
+        echo '<button type="button" class="type-pill' . $active . '" data-type="' . htmlspecialchars($k)
+            . '" role="radio" aria-checked="' . $checked . '">' . htmlspecialchars($label) . '</button>';
+    }
+    echo '</div>';
+
+    echo '<label class="form-label" for="qr-content">Content</label>';
+    echo '<textarea id="qr-content" class="form-textarea" rows="4" placeholder="example.com · hello@decisionsciencecorp.com · +1 555 010 0123 · or any short note"></textarea>';
+
+    echo '<div class="suggest" id="qr-suggest" hidden><p class="meta" id="qr-suggest-text"></p>';
+    echo '<div class="suggest-actions">';
+    echo '<button type="button" class="btn" id="qr-suggest-accept">Use suggestion</button>';
+    echo '<button type="button" class="btn secondary" id="qr-suggest-dismiss">Keep as typed</button>';
+    echo '</div></div>';
+
+    echo '<div class="studio-row">';
+    echo '<label><span class="form-label">Error correction</span>';
+    echo '<select id="qr-ecl" class="form-input"><option value="L">L — 7%</option>';
+    echo '<option value="M" selected>M — 15%</option><option value="Q">Q — 25%</option>';
+    echo '<option value="H">H — 30%</option></select></label>';
+    echo '<label><span class="form-label">Format</span>';
+    echo '<select id="qr-format" class="form-input"><option value="svg" selected>SVG</option>';
+    echo '<option value="png">PNG</option></select></label>';
+    echo '</div>';
+
+    echo '<div class="studio-grid">';
+    echo '<label class="form-label" for="qr-logo-file">Center logo <span class="meta">(optional)</span></label>';
+    echo '<input type="file" id="qr-logo-file" accept="image/png,image/jpeg,image/gif,image/webp">';
+    echo '<div class="logo-preview" id="qr-logo-preview" hidden>';
+    echo '<img id="qr-logo-img" alt="Logo preview"><button type="button" class="btn secondary" id="qr-logo-remove">Remove</button></div>';
+    echo '<div id="qr-logo-size-field" hidden><label class="form-label" for="qr-logo-size">Logo size <span id="qr-logo-size-val">22%</span></label>';
+    echo '<input id="qr-logo-size" class="form-input" type="range" min="10" max="30" step="1" value="22"></div>';
+    echo '</div>';
+
+    echo '<label class="check-row"><input type="checkbox" id="qr-persist"> Also save a short-lived file link (non-default)</label>';
+
+    echo '<div class="upload-actions">';
+    echo '<button class="btn" type="button" id="qr-make">Make QR</button>';
+    echo '<button class="btn secondary" type="button" id="qr-host-file">Host as file instead</button>';
+    echo '</div>';
+    echo '<p id="qr-status" class="meta"></p>';
+
+    echo '<div id="qr-result" hidden>';
+    echo '<div class="qr-wrap"><img id="qr-result-img" alt="QR code"><p class="meta" id="qr-result-meta"></p></div>';
+    echo '<p class="meta">Encoded payload</p><pre class="json" id="qr-result-encoded"></pre>';
+    echo '</div></div>';
+
+    // ——— Files panel ———
+    echo '<div id="panel-files" role="tabpanel" hidden>';
+    echo '<p class="meta">Small files try the QR path first (contents encoded, nothing on disk). ';
+    echo 'Check the box to skip QR and always store under <code>/uploads/</code>.</p>';
+    echo '<label class="check-row"><input type="checkbox" id="force-file-host"> Force file host (skip QR attempt)</label>';
 
     echo '<div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop files">';
     echo '<p><strong>Drag files here</strong> or click to browse</p>';
@@ -226,160 +314,25 @@ function render_home(): void
 
     echo '<div class="file-queue" id="file-queue" hidden></div>';
     echo '<div class="upload-actions" id="upload-actions" hidden>';
-    echo '<button class="btn" type="button" id="upload-btn">Upload</button>';
+    echo '<button class="btn" type="button" id="upload-btn">Upload / encode</button>';
     echo '<button class="btn secondary" type="button" id="clear-btn">Clear</button>';
     echo '<p class="meta" id="upload-summary"></p></div>';
+    echo '</div>';
 
     echo '<div class="doc-links">';
     echo '<a href="/docs/api/">API documentation</a>';
     echo '<a href="/AGENTS.md">AGENTS.md</a>';
+    echo '<a href="https://qr.decisionsciencecorp.com/">QR Code Studio</a>';
     echo '</div>';
 
     echo '<noscript><div class="upload-box"><form method="post" enctype="multipart/form-data" action="/">';
-    echo '<p class="meta">JavaScript is disabled — single-file upload only.</p>';
+    echo '<p class="meta">JavaScript is disabled — single-file upload only (file host path).</p>';
     echo '<input type="file" name="file" required><br>';
     echo '<button class="btn" type="submit">Upload</button></form></div></noscript>';
 
-    echo '<script>' . sanctum_tmp_upload_js($maxBatch) . '</script>';
-    sanctum_tmp_page_shell_end();
-}
-
-function sanctum_tmp_upload_js(int $maxBatch): string
-{
-    $maxBatchJs = (int) $maxBatch;
-    return <<<JS
-(function(){
-  const maxBatch = {$maxBatchJs};
-  const concurrency = 3;
-  const endpoint = '/api/v1/upload.php';
-  const drop = document.getElementById('drop-zone');
-  const input = document.getElementById('file-input');
-  const queue = document.getElementById('file-queue');
-  const actions = document.getElementById('upload-actions');
-  const uploadBtn = document.getElementById('upload-btn');
-  const clearBtn = document.getElementById('clear-btn');
-  const summary = document.getElementById('upload-summary');
-  let items = [];
-
-  function fmtBytes(n){
-    if(n < 1024) return n + ' B';
-    if(n < 1048576) return (n/1024).toFixed(1) + ' KiB';
-    return (n/1048576).toFixed(1) + ' MiB';
-  }
-
-  function setItems(files){
-    const list = Array.from(files || []);
-    if(!list.length) return;
-    const room = maxBatch - items.length;
-    if(room <= 0){ alert('Maximum ' + maxBatch + ' files per batch.'); return; }
-    const slice = list.slice(0, room);
-    if(list.length > room) alert('Only the first ' + room + ' file(s) were added (batch limit ' + maxBatch + ').');
-    slice.forEach(f => items.push({file:f, status:'queued', progress:0, result:null, error:''}));
-    render();
-  }
-
-  function render(){
-    queue.innerHTML = '';
-    if(!items.length){
-      queue.hidden = true;
-      actions.hidden = true;
-      return;
-    }
-    queue.hidden = false;
-    actions.hidden = false;
-    items.forEach((it, idx) => {
-      const row = document.createElement('div');
-      row.className = 'file-row';
-      const head = document.createElement('div');
-      head.className = 'file-row-head';
-      const name = document.createElement('span');
-      name.className = 'file-name';
-      name.textContent = it.file.name + ' (' + fmtBytes(it.file.size) + ')';
-      const st = document.createElement('span');
-      st.className = 'file-status' + (it.status==='done'?' ok':it.status==='error'?' err':'');
-      st.textContent = it.status==='queued'?'Queued':it.status==='uploading'?'Uploading…':it.status==='done'?'Done':it.error||'Failed';
-      head.appendChild(name);
-      head.appendChild(st);
-      row.appendChild(head);
-      const bar = document.createElement('div');
-      bar.className = 'progress';
-      const fill = document.createElement('span');
-      fill.style.width = (it.progress*100)+'%';
-      bar.appendChild(fill);
-      row.appendChild(bar);
-      queue.appendChild(row);
-    });
-    const busy = items.some(i => i.status==='uploading');
-    uploadBtn.disabled = busy || !items.some(i => i.status==='queued');
-    clearBtn.disabled = busy;
-    const done = items.filter(i => i.status==='done').length;
-    const failed = items.filter(i => i.status==='error').length;
-    if(done || failed) summary.textContent = done + ' uploaded' + (failed?(', '+failed+' failed'):'') + '.';
-    else summary.textContent = items.length + ' file(s) ready.';
-  }
-
-  function uploadOne(it){
-    return new Promise(resolve => {
-      it.status = 'uploading';
-      it.progress = 0;
-      render();
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', endpoint);
-      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-      xhr.upload.onprogress = e => {
-        if(e.lengthComputable){ it.progress = e.loaded / e.total; render(); }
-      };
-      xhr.onload = () => {
-        let payload = null;
-        try { payload = JSON.parse(xhr.responseText); } catch(e) {}
-        if(xhr.status >= 200 && xhr.status < 300 && payload && payload.status === 'success'){
-          it.status = 'done';
-          it.progress = 1;
-          it.result = payload.data;
-        } else {
-          it.status = 'error';
-          it.error = (payload && payload.message) ? payload.message : ('HTTP ' + xhr.status);
-        }
-        render();
-        resolve();
-      };
-      xhr.onerror = () => { it.status='error'; it.error='Network error'; render(); resolve(); };
-      const fd = new FormData();
-      fd.append('file', it.file, it.file.name);
-      xhr.send(fd);
-    });
-  }
-
-  async function runQueue(){
-    uploadBtn.disabled = true;
-    const pending = items.filter(i => i.status==='queued');
-    let idx = 0;
-    async function worker(){
-      while(idx < pending.length){
-        const cur = pending[idx++];
-        await uploadOne(cur);
-      }
-    }
-    const workers = Array.from({length: Math.min(concurrency, pending.length)}, () => worker());
-    await Promise.all(workers);
-    const results = items.filter(i => i.status==='done' && i.result).map(i => i.result);
-    if(results.length){
-      sessionStorage.setItem('sanctum_tmp_upload_results', JSON.stringify(results));
-      location.href = '/?uploaded=1';
-    }
-  }
-
-  drop.addEventListener('click', () => input.click());
-  drop.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); input.click(); }});
-  input.addEventListener('change', () => { setItems(input.files); input.value=''; });
-  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragover'); }));
-  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragover'); }));
-  drop.addEventListener('drop', e => setItems(e.dataTransfer.files));
-  uploadBtn.addEventListener('click', runQueue);
-  clearBtn.addEventListener('click', () => { if(!items.some(i=>i.status==='uploading')){ items=[]; render(); }});
-  render();
-})();
-JS;
+    echo '<script>document.body.setAttribute("data-max-batch",' . (int) $maxBatch . ');</script>';
+    echo '<script src="/assets/home-studio.js" defer></script>';
+    sanctum_tmp_page_shell_end(true);
 }
 
 function render_home_plain(): void

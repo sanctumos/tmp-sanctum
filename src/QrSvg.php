@@ -7,25 +7,15 @@ namespace SanctumTmp;
 final class QrSvg
 {
     /**
-     * Encode text as inline SVG QR markup, or null if the library is unavailable.
+     * Encode text as inline SVG markup or a data-URI image, or null if encoding fails.
      */
     public static function encode(string $text): ?string
     {
-        if (!class_exists(\chillerlan\QRCode\QRCode::class)) {
+        $rendered = QrRender::tryEncode($text, 'svg', 'M', 5);
+        if ($rendered === null) {
             return null;
         }
 
-        try {
-            $options = new \chillerlan\QRCode\QROptions([
-                'outputType' => \chillerlan\QRCode\QRCode::OUTPUT_MARKUP_SVG,
-                'eccLevel' => \chillerlan\QRCode\QRCode::ECC_M,
-                'scale' => 5,
-                'addQuietzone' => true,
-            ]);
-
-            return (new \chillerlan\QRCode\QRCode($options))->render($text);
-        } catch (\Throwable) {
-            return null;
-        }
+        return $rendered['data_uri'];
     }
 }

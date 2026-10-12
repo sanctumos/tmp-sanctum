@@ -12,7 +12,7 @@ Temporary file host for Sanctum (`tmp.sanctumos.org`) — **tmpfiles.org-compati
 
 **Upload:** `POST /api/v1/upload.php` — multipart field `file` → JSON.
 
-**Browser upload:** `POST /` via the home form → HTML result page (tmpfiles-style) with links and a **QR code** encoding the same JSON (scan on phone to avoid OCR).
+**Browser:** `/` QR/paste studio (try-encode payload → ephemeral QR; optional short-lived persist) plus Files tab. **API upload** unchanged for agents.
 
 ```json
 {"status":"success","data":{"url":"https://tmp.sanctumos.org/{id}/{filename}","direct_url":"https://tmp.sanctumos.org/uploads/{id}/{filename}","id":"…","filename":"…"}}

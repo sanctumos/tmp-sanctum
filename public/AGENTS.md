@@ -6,7 +6,8 @@ Sanctum ephemeral file exchange. Hostname: **`tmp.sanctumos.org`**.
 
 - Short-lived uploads for **Broca → Athena** image attachments (Venice / `image_interpret` need a **GET**-able URL).
 - Fallback when **tmpfiles.org** direct URLs fail (HTML interstitial instead of raw bytes).
-- Human **desktop → phone** handoff: browser upload at `/` returns a QR code encoding the API JSON.
+- Human **desktop → phone** handoff: browser `/` tries QR-of-payload first (ephemeral); file host on override/fallback.
+- Full branded QR studio remains at **qr.decisionsciencecorp.com** (not replaced).
 
 ## What agents should call
 
@@ -14,6 +15,7 @@ Sanctum ephemeral file exchange. Hostname: **`tmp.sanctumos.org`**.
 |------|--------|------|
 | Upload bytes | `POST` | `/api/v1/upload.php` |
 | Download bytes | `GET` | value of `data.direct_url` from upload JSON |
+| QR encode (humans/studio) | `POST` | `/api/v1/encode.php` (optional; not for Broca file drops) |
 
 Do **not** scrape the HTML home page or view URLs for automation. Use the API path and **`direct_url`**.
 
@@ -44,8 +46,10 @@ Full API detail: [`docs/API.md`](docs/API.md) in the repo.
 |------|------|
 | `public/api/v1/upload.php` | Upload endpoint |
 | `public/index.php` | Browser router + view pages |
-| `src/UploadService.php` | Storage + SQLite metadata |
+| `src/UploadService.php` | Single-copy storage under uploads/ + SQLite metadata |
 | `tools/purge-expired.php` | Cron TTL purge |
+| `tools/orphan-sweep.php` | Cron orphan dir cleanup |
+| `tools/usage-report.php` | usage_events rollup CLI |
 
 Deploy: multihost git-sync; **`composer install --no-dev`** at repo root (QR on browser uploads). See `docs/DEPLOY-multihost.md`.
 

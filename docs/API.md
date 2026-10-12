@@ -108,11 +108,32 @@ HTML metadata, download link, and **QR code** (same API JSON as the upload-succe
 
 Override on server via `config.local.php` or env (`SANCTUM_TMP_MAX_BYTES`, `SANCTUM_TMP_TTL_SECONDS`, `SANCTUM_TMP_MAX_BATCH_SIZE`).
 
+## QR encode (browser studio)
+
+**`POST /api/v1/encode.php`** — JSON body. Tries to encode content as a QR (normalize URL/email/tel/text first). On capacity failure returns **422** with `"code":"qr_capacity"` so clients can fall back to **`upload.php`**.
+
+```json
+{
+  "content": "example.com",
+  "type": "auto",
+  "format": "svg",
+  "ecl": "M",
+  "persist": false,
+  "logo_base64": null,
+  "logo_size_pct": 22
+}
+```
+
+**Success (200)** — ephemeral by default (`persisted: false`). Set `"persist": true` to also store a short-lived file (returns `url` / `direct_url` like upload).
+
+This endpoint does **not** replace upload for agents. Broca / Venice keep using **`POST /api/v1/upload.php`**.
+
 ## Browser upload
 
-**`GET /`** — drag-and-drop or multi-select UI uploads files via the single-file API (queued, up to three concurrent). **`POST /`** with multipart `file` or `files[]` returns an HTML result page. API clients should use **`/api/v1/upload.php`**.
+**`GET /`** — QR/paste studio (default) plus Files tab. Small payloads try QR first (ephemeral); override hosts as a file. **`POST /`** with multipart `file` still returns an HTML result page. API clients should use **`/api/v1/upload.php`**.
 
 ## Related
 
 - Agent / integration notes: [`/AGENTS.md`](https://tmp.sanctumos.org/AGENTS.md)
 - Human-readable API page: [`/docs/api`](https://tmp.sanctumos.org/docs/api)
+- Full QR studio (unchanged hostname): [qr.decisionsciencecorp.com](https://qr.decisionsciencecorp.com/)

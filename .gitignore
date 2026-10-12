@@ -13,3 +13,4 @@ public/uploads/*
 logs/*
 !logs/.gitkeep
 .phpunit.cache/
+build/
