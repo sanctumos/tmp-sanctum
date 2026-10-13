@@ -14,6 +14,7 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 | Doc | URL / path |
 |-----|------------|
 | HTTP API | [`docs/API.md`](docs/API.md) · live `/docs/api/` |
+| SDK & SMCP | [`docs/SDK.md`](docs/SDK.md) · live `/docs/sdk/` |
 | Agents | [`AGENTS.md`](AGENTS.md) |
 | Android app | [`docs/ANDROID.md`](docs/ANDROID.md) · `/docs/android/` |
 | Get the app (APK) | Live `/app/` · artifacts in `public/downloads/` |
@@ -24,7 +25,9 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 
 **Upload:** `POST /api/v1/upload.php` — multipart field `file` → JSON.
 
-**Browser:** `/` Files tab by default (short-lived upload). A single small text-like file is offered the QR / paste tab instead. QR path = try-encode → ephemeral (optional persist). **API upload** unchanged for agents.
+**QR encode:** `POST /api/v1/encode.php` — JSON body; **422** `qr_capacity` → fall back to upload. Agents keep using upload for attachments.
+
+**Browser:** `/` Files tab by default (short-lived upload). A single small text-like file is offered the QR / paste tab instead. QR path = try-encode → ephemeral (optional persist).
 
 ```json
 {"status":"success","data":{"url":"https://tmp.sanctumos.org/{id}/{filename}","direct_url":"https://tmp.sanctumos.org/uploads/{id}/{filename}","id":"…","filename":"…"}}
@@ -34,6 +37,8 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 
 **Multi-file:** multipart `files[]` (see API doc).
 
+**Python SDK / SMCP:** [`sanctum_tmp_sdk/`](sanctum_tmp_sdk/) · [`smcp_plugin/tmp/`](smcp_plugin/tmp/) — see [`docs/SDK.md`](docs/SDK.md).
+
 ## Layout
 
 | Path | Role |
@@ -42,11 +47,14 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 | `public/branding/` | SanctumOS web brand pack (`brand.css`, `logo.svg`, `site.json`) |
 | `public/assets/` | Shared site assets (e.g. `sanctum-logo.svg`) |
 | `android/` | Sanctum Share — compilable Gradle project |
+| `sanctum_tmp_sdk/` | Python SDK (upload + encode) |
+| `smcp_plugin/tmp/` | SMCP CLI plugin |
 | `branding/tokens.json` | Shared brand tokens (web + app map) |
 | `AGENTS.md` | Agent integration notes (also at `/AGENTS.md`) |
-| `docs/` | API, Android, branding, deploy |
+| `docs/` | API, SDK, Android, branding, deploy |
 | `public/index.php` | Home + router (view URLs) |
 | `public/api/v1/upload.php` | Upload API |
+| `public/api/v1/encode.php` | QR encode API |
 | `public/uploads/` (or `html/uploads/` on multihost) | **Single copy** of uploaded bytes (`/uploads/{id}/{file}`) |
 | `db/` | SQLite metadata + durable `usage_events` |
 | `storage/` | Legacy only — no longer written on upload; orphan sweeper cleans leftovers |
@@ -70,6 +78,9 @@ Copy `public/includes/config.example.php` → `config.local.php` on the server (
 ```bash
 composer install
 ./vendor/bin/phpunit
+
+# Python SDK + SMCP plugin (mocked HTTP)
+PYTHONPATH=. python3 -m unittest discover -s tests/python -v
 ```
 
 ## Android

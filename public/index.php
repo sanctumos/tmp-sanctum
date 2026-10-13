@@ -44,6 +44,15 @@ if ($uri === '/docs/branding' || $uri === '/docs/branding/' || $uri === '/docs/B
     exit;
 }
 
+if ($uri === '/docs/sdk' || $uri === '/docs/sdk/' || $uri === '/docs/SDK.md') {
+    if ($uri === '/docs/SDK.md') {
+        sanctum_tmp_send_markdown_file(sanctum_tmp_doc_path('SDK.md'), 'SDK.md');
+        exit;
+    }
+    render_markdown_doc('SDK.md', 'SDK & SMCP');
+    exit;
+}
+
 if ($uri === '/AGENTS.md') {
     sanctum_tmp_send_markdown_file(sanctum_tmp_agents_path(), 'AGENTS.md');
     exit;

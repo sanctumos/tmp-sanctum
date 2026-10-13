@@ -156,6 +156,7 @@ function sanctum_tmp_page_shell_end(bool $withCopy = false): void
     echo '</main><footer>Part of <a href="' . htmlspecialchars((string) $brand['footer_org_url']) . '">'
         . htmlspecialchars((string) $brand['footer_org_name']) . '</a> · ';
     echo '<a href="/docs/api/">API</a> · <a href="/AGENTS.md">Agents</a>'
+        . ' · <a href="/docs/sdk/">SDK</a>'
         . ' · <a href="/docs/android/">Android</a>'
         . ' · <a href="/app/">Get the app</a></footer></div>';
     if ($withCopy) {
@@ -296,6 +297,7 @@ function render_home(): void
 
     echo '<div class="doc-links">';
     echo '<a href="/docs/api/">API documentation</a>';
+    echo '<a href="/docs/sdk/">SDK &amp; SMCP</a>';
     echo '<a href="/AGENTS.md">AGENTS.md</a>';
     echo '<a href="/app/">Get the app</a>';
     echo '<a href="https://qr.decisionsciencecorp.com/">QR Code Studio</a>';
@@ -319,7 +321,9 @@ function render_home_plain(): void
     echo $config->baseUrl . "\n\n";
     echo "Upload:  POST /api/v1/upload.php  (multipart field: file)\n";
     echo "Multi:   POST /api/v1/upload.php  (multipart field: files[]; max {$config->maxBatchSize} per batch)\n";
+    echo "Encode:  POST /api/v1/encode.php  (JSON QR-first; 422 qr_capacity → upload)\n";
     echo "API:     GET  /docs/API.md\n";
+    echo "SDK:     GET  /docs/SDK.md\n";
     echo "Agents:  GET  /AGENTS.md\n";
 }
 
@@ -448,7 +452,7 @@ function render_app_download(): void
         . '<code>public/downloads/</code></li>';
     echo '</ul>';
 
-    echo '<div class="doc-links"><a href="/docs/api/">API</a><a href="/docs/android/">Android</a>'
+    echo '<div class="doc-links"><a href="/docs/api/">API</a><a href="/docs/sdk/">SDK</a><a href="/docs/android/">Android</a>'
         . '<a href="/docs/branding/">Branding</a><a href="/app/">Get the app</a><a href="/">Upload</a></div>';
     sanctum_tmp_page_shell_end(true);
 }
@@ -476,7 +480,7 @@ function render_markdown_doc(string $relative, string $heading, string $subtitle
     sanctum_tmp_page_shell_start($heading, $subtitle);
     echo '<h2 class="doc-title">' . htmlspecialchars($heading) . '</h2>';
     echo sanctum_tmp_markdown_to_html($markdown);
-    echo '<div class="doc-links"><a href="/docs/api/">API</a><a href="/docs/android/">Android</a>'
+    echo '<div class="doc-links"><a href="/docs/api/">API</a><a href="/docs/sdk/">SDK</a><a href="/docs/android/">Android</a>'
         . '<a href="/docs/branding/">Branding</a><a href="/app/">Get the app</a><a href="/">Upload</a></div>';
     sanctum_tmp_page_shell_end();
 }
