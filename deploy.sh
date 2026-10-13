@@ -9,7 +9,14 @@ rsync -a --delete \
   --exclude 'includes/config.local.php' \
   "$ROOT/public/" "$WEB_ROOT/"
 cp -f "$ROOT/AGENTS.md" "$DEPLOY_ROOT/AGENTS.md" 2>/dev/null || cp -f "$ROOT/public/AGENTS.md" "$DEPLOY_ROOT/AGENTS.md"
-cp -f "$ROOT/docs/API.md" "$DEPLOY_ROOT/docs/API.md" 2>/dev/null || cp -f "$ROOT/public/docs/API.md" "$DEPLOY_ROOT/docs/API.md"
+for doc in API.md ANDROID.md BRANDING.md; do
+  if [ -f "$ROOT/docs/$doc" ]; then
+    cp -f "$ROOT/docs/$doc" "$DEPLOY_ROOT/docs/$doc"
+  elif [ -f "$ROOT/public/docs/$doc" ]; then
+    cp -f "$ROOT/public/docs/$doc" "$DEPLOY_ROOT/docs/$doc"
+  fi
+done
+
 mkdir -p "$ROOT/db" "$ROOT/storage" "$ROOT/logs" "$WEB_ROOT/dl"
 if [ ! -e "$DEPLOY_ROOT/vendor" ] && [ -d "$ROOT/vendor" ]; then
   ln -sfn "$ROOT/vendor" "$DEPLOY_ROOT/vendor" 2>/dev/null || true

@@ -14,3 +14,10 @@ logs/*
 !logs/.gitkeep
 .phpunit.cache/
 build/
+android/.gradle/
+android/**/build/
+android/local.properties
+android/**/*.apk
+android/.idea/
+*.iml
+.otto-githooks-installed

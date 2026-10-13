@@ -40,6 +40,10 @@ Automated clients hitting **`GET /`** receive **plain text** pointers, not the b
 
 Full API detail: [`docs/API.md`](docs/API.md) in the repo.
 
+## Android share client
+
+**Sanctum Share** lives in [`android/`](android/) — buildable from this clone. Docs: [`docs/ANDROID.md`](docs/ANDROID.md). Rebrand web + app: [`docs/BRANDING.md`](docs/BRANDING.md).
+
 ## Repo layout
 
 | Path | Role |

@@ -21,6 +21,24 @@ if ($uri === '/docs/api' || $uri === '/docs/API.md') {
     exit;
 }
 
+if ($uri === '/docs/android' || $uri === '/docs/android/' || $uri === '/docs/ANDROID.md') {
+    if ($uri === '/docs/ANDROID.md') {
+        sanctum_tmp_send_markdown_file(sanctum_tmp_doc_path('ANDROID.md'), 'ANDROID.md');
+        exit;
+    }
+    render_markdown_doc('ANDROID.md', 'Sanctum Share (Android)');
+    exit;
+}
+
+if ($uri === '/docs/branding' || $uri === '/docs/branding/' || $uri === '/docs/BRANDING.md') {
+    if ($uri === '/docs/BRANDING.md') {
+        sanctum_tmp_send_markdown_file(sanctum_tmp_doc_path('BRANDING.md'), 'BRANDING.md');
+        exit;
+    }
+    render_markdown_doc('BRANDING.md', 'Branding');
+    exit;
+}
+
 if ($uri === '/AGENTS.md') {
     sanctum_tmp_send_markdown_file(sanctum_tmp_agents_path(), 'AGENTS.md');
     exit;

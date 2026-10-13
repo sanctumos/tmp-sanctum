@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep in sync with branding/tokens.json + public/branding/brand.css (SanctumOS) -->
+<resources>
+    <color name="sanctum_bg">#F9F9F9</color>
+    <color name="sanctum_surface">#FFFFFF</color>
+    <color name="sanctum_bg2">#F4F4F4</color>
+    <color name="sanctum_primary">#1C80AA</color>
+    <color name="sanctum_secondary">#E16E0A</color>
+    <color name="sanctum_ink">#333333</color>
+    <color name="sanctum_muted">#5A6A75</color>
+    <color name="sanctum_ok">#28A745</color>
+    <color name="sanctum_err">#DC3545</color>
+    <color name="sanctum_border">#CCCCCC</color>
+</resources>
