@@ -12,7 +12,8 @@
     },
     "autoload": {
         "psr-4": {
-            "SanctumTmp\\": "src/"
+            "SanctumTmp\\": "src/",
+            "SanctumTmp\\Sdk\\": "sdk/php/src/SanctumTmp/Sdk/"
         }
     },
     "autoload-dev": {

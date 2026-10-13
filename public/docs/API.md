@@ -13,7 +13,7 @@ Base URL: `https://tmp.sanctumos.org`
 | View page (HTML + results QR) | `GET /{id}/{filename}` | none |
 | Agent discovery (plain) | `GET /` · `GET /AGENTS.md` · `GET /docs/API.md` | none |
 
-**SDKs / SMCP:** Python client in [`sanctum_tmp_sdk/`](../sanctum_tmp_sdk/) · SMCP plugin in [`smcp_plugin/tmp/`](../smcp_plugin/tmp/) · notes in [`docs/SDK.md`](SDK.md).
+**SDKs / SMCP:** Python [`sanctum_tmp_sdk/`](../sanctum_tmp_sdk/) · PHP [`sdk/php/`](../sdk/php/) · SMCP [`smcp_plugin/tmp/`](../smcp_plugin/tmp/) · notes in [`docs/SDK.md`](SDK.md).
 
 ---
 

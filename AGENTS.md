@@ -43,11 +43,13 @@ Full detail: [`docs/API.md`](docs/API.md).
 | Piece | Path |
 |-------|------|
 | Python SDK | [`sanctum_tmp_sdk/`](sanctum_tmp_sdk/) |
+| PHP SDK | [`sdk/php/`](sdk/php/) |
 | SMCP plugin | [`smcp_plugin/tmp/`](smcp_plugin/tmp/) |
 | Docs | [`docs/SDK.md`](docs/SDK.md) |
 
 ```bash
 PYTHONPATH=. python3 -c 'from sanctum_tmp_sdk import SanctumTmpClient; print(SanctumTmpClient().health())'
+php -r 'require "vendor/autoload.php"; var_export((new SanctumTmp\Sdk\SanctumTmpClient())->getBaseUrl());'
 python3 smcp_plugin/tmp/cli.py --describe
 python3 smcp_plugin/tmp/cli.py encode-or-upload --content 'hello'
 ```
@@ -81,6 +83,7 @@ Automated clients hitting **`GET /`** receive **plain text** pointers, not the b
 | `public/api/v1/qr.php` | Results QR HTML fragment |
 | `public/index.php` | Browser router + view pages |
 | `sanctum_tmp_sdk/` | Python SDK |
+| `sdk/php/` | PHP SDK |
 | `smcp_plugin/tmp/` | SMCP CLI plugin |
 | `src/UploadService.php` | Single-copy storage under uploads/ + SQLite metadata |
 | `tools/purge-expired.php` | Cron TTL purge |

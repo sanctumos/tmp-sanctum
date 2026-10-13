@@ -37,7 +37,7 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 
 **Multi-file:** multipart `files[]` (see API doc).
 
-**Python SDK / SMCP:** [`sanctum_tmp_sdk/`](sanctum_tmp_sdk/) · [`smcp_plugin/tmp/`](smcp_plugin/tmp/) — see [`docs/SDK.md`](docs/SDK.md).
+**SDKs / SMCP:** Python [`sanctum_tmp_sdk/`](sanctum_tmp_sdk/) · PHP [`sdk/php/`](sdk/php/) · SMCP [`smcp_plugin/tmp/`](smcp_plugin/tmp/) — see [`docs/SDK.md`](docs/SDK.md).
 
 ## Layout
 
@@ -48,6 +48,7 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 | `public/assets/` | Shared site assets (e.g. `sanctum-logo.svg`) |
 | `android/` | Sanctum Share — compilable Gradle project |
 | `sanctum_tmp_sdk/` | Python SDK (upload + encode) |
+| `sdk/php/` | PHP SDK (`SanctumTmp\Sdk\SanctumTmpClient`) |
 | `smcp_plugin/tmp/` | SMCP CLI plugin |
 | `branding/tokens.json` | Shared brand tokens (web + app map) |
 | `AGENTS.md` | Agent integration notes (also at `/AGENTS.md`) |

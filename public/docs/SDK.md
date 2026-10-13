@@ -1,6 +1,6 @@
 # Sanctum Temp — SDK & SMCP
 
-Python client and SMCP plugin for [tmp.sanctumos.org](https://tmp.sanctumos.org) (or self-hosted Temp). Covers **upload**, **QR encode**, **encode-or-upload fallback**, and **download**.
+Python + PHP clients and SMCP plugin for [tmp.sanctumos.org](https://tmp.sanctumos.org) (or self-hosted Temp). Covers **upload**, **QR encode**, **encode-or-upload fallback**, and **download**.
 
 HTTP contract: [`API.md`](API.md).
 
@@ -49,6 +49,40 @@ Env: `SANCTUM_TMP_BASE_URL` (default `https://tmp.sanctumos.org`), optional `SAN
 
 ---
 
+## PHP SDK (`sdk/php/`)
+
+Composer-autoloaded (`SanctumTmp\Sdk\`) — mirrors the Python method surface (camelCase). Requires PHP 8.1+ and **curl**.
+
+```php
+require __DIR__ . '/vendor/autoload.php';
+
+use SanctumTmp\Sdk\SanctumTmpClient;
+
+$c = new SanctumTmpClient(); // or SANCTUM_TMP_BASE_URL
+print_r($c->health());
+
+$up = $c->uploadFile('photo.png');
+echo $up['data']['direct_url'], "\n";
+
+$out = $c->encodeOrUpload('example.com');
+echo $out['sanctum_tmp_mode'], "\n";
+```
+
+| Method | Maps to |
+|--------|---------|
+| `health()` | `GET /AGENTS.md` |
+| `uploadFile` / `uploadBytes` / `uploadFiles` / `uploadText` | `POST /api/v1/upload.php` |
+| `encode(...)` | `POST /api/v1/encode.php` — throws `QrCapacityException` |
+| `encodeOrUpload($content)` | encode → on capacity, `uploadText` |
+| `qrHtmlFragment(array)` | `POST /api/v1/qr.php` |
+| `download($directUrl)` | `GET` bytes |
+
+Standalone require path: [`sdk/php/README.md`](../sdk/php/README.md).
+
+Exceptions: `QrCapacityException`, `ValidationException`, `ApiException` (under `SanctumTmp\Sdk`).
+
+---
+
 ## SMCP plugin (`smcp_plugin/tmp/`)
 
 CLI for agent hosts (same pattern as Tasks / Reps / Invoicing). **No API key** — Temp is a public upload/encode API.
@@ -85,6 +119,7 @@ Wire into an SMCP host by pointing a plugin symlink/entry at `smcp_plugin/tmp/cl
 | Website `/` | QR tab / soft push ≤3500 B | Files tab → `upload.php` |
 | Sanctum Share (Android) | Local QR + refine `encode.php`; **Do file instead** | `upload.php` + results QR of API JSON |
 | Python SDK / SMCP | `encode` / `encode_or_upload` | `upload_*` + `download` |
+| PHP SDK | `encode` / `encodeOrUpload` | `upload*` + `download` |
 | Broca | — | `upload.php` only (`ephemeral_upload.py`) |
 
 ---
@@ -92,7 +127,7 @@ Wire into an SMCP host by pointing a plugin symlink/entry at `smcp_plugin/tmp/cl
 ## Tests
 
 ```bash
-# PHP (server)
+# PHP (server + SDK behavioral stubs)
 composer install && ./vendor/bin/phpunit
 
 # Python SDK (mocked HTTP)
