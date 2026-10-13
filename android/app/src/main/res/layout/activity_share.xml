@@ -83,6 +83,16 @@
                 android:indeterminate="true"
                 android:indeterminateTint="@color/sanctum_primary" />
 
+            <ImageView
+                android:id="@+id/imageQr"
+                android:layout_width="match_parent"
+                android:layout_height="280dp"
+                android:layout_marginTop="16dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/qr_image_cd"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/textResult"
                 android:layout_width="match_parent"
@@ -91,6 +101,24 @@
                 android:textColor="@color/sanctum_ink"
                 android:textIsSelectable="true"
                 android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonCopyPayload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/copy_payload"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonHostFile"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/host_as_file"
+                android:visibility="gone"
+                app:strokeColor="@color/sanctum_slate" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonCopyDirect"

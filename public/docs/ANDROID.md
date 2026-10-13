@@ -10,11 +10,12 @@ Share-sheet client for this Sanctum Temp API. Lives in **`android/`** in the sam
 ## What it does
 
 - Appears in Android **Share** (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`) for `*/*` and text
-- Uploads with `POST {base}/api/v1/upload.php`
+- **Text / small text-like shares (default):** QR-first via `POST {base}/api/v1/encode.php` (same soft ≤3500‑byte rule as the website). Shows a scannable QR + **Host as file instead** override. Too large for a QR → auto-falls back to upload.
+- **Files:** Uploads with `POST {base}/api/v1/upload.php`
   - one file → multipart field `file`
   - many files → multipart `files[]` (max 20, same as server)
 - Shows **view URL** + **direct_url**; copy / open
-- **Settings:** configurable Sanctum Temp base URL (default `https://tmp.sanctumos.org`)
+- **Settings:** Sanctum Temp base URL (default `https://tmp.sanctumos.org`) + **Prefer QR for shared text** (default on)
 - Home: pick files + recent share history
 
 Package ID: `org.sanctumos.share`  
@@ -86,9 +87,10 @@ Trailing slashes are stripped. Upload path is always `{base}/api/v1/upload.php`.
 | Call | Path |
 |------|------|
 | Upload | `POST /api/v1/upload.php` |
+| QR encode (text path) | `POST /api/v1/encode.php` |
 | Open result | `data.url` / `data.direct_url` |
 
-Full HTTP reference: [`API.md`](API.md). Optional QR studio (`POST /api/v1/qr.php`) is **not** required for MVP share uploads.
+Full HTTP reference: [`API.md`](API.md). Text shares use **encode.php** (QR-first); agents and binary shares keep using **upload.php**.
 
 ---
 

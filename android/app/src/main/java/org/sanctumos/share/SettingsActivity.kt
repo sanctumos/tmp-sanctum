@@ -19,6 +19,7 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         prefs = Prefs(this)
         binding.editBaseUrl.setText(prefs.baseUrl())
+        binding.switchPreferQr.isChecked = prefs.preferQrForText()
         updatePreview()
         binding.editBaseUrl.addTextChangedListener(
             object : TextWatcher {
@@ -27,15 +28,21 @@ class SettingsActivity : AppCompatActivity() {
                 override fun afterTextChanged(s: Editable?) = updatePreview()
             },
         )
+        binding.switchPreferQr.setOnCheckedChangeListener { _, checked ->
+            prefs.setPreferQrForText(checked)
+        }
         binding.buttonSave.setOnClickListener {
             prefs.setBaseUrl(binding.editBaseUrl.text?.toString().orEmpty())
+            prefs.setPreferQrForText(binding.switchPreferQr.isChecked)
             binding.editBaseUrl.setText(prefs.baseUrl())
             updatePreview()
             Snackbar.make(binding.root, R.string.save, Snackbar.LENGTH_SHORT).show()
         }
         binding.buttonReset.setOnClickListener {
             prefs.resetBaseUrl()
+            prefs.setPreferQrForText(true)
             binding.editBaseUrl.setText(prefs.baseUrl())
+            binding.switchPreferQr.isChecked = true
             updatePreview()
         }
     }

@@ -5,7 +5,7 @@
     <string name="share_label">Sanctum Share</string>
     <string name="org_line">SanctumOS</string>
     <string name="settings_title">Settings</string>
-    <string name="home_blurb">Share any file from Android into Sanctum Temp. Default host is tmp.sanctumos.org — point Settings at your own Sanctum Temp if you self-host.</string>
+    <string name="home_blurb">Share files into Sanctum Temp, or short text as a QR (same idea as the website). Default host is tmp.sanctumos.org.</string>
     <string name="pick_files">Pick files to upload</string>
     <string name="open_settings">Settings</string>
     <string name="recent_heading">Recent shares</string>
@@ -13,16 +13,25 @@
     <string name="base_url_label">Sanctum Temp base URL</string>
     <string name="base_url_hint">https://tmp.sanctumos.org</string>
     <string name="upload_preview">Upload endpoint: %1$s</string>
+    <string name="prefer_qr_label">Prefer QR for shared text</string>
+    <string name="prefer_qr_help">On (default): short text opens a QR you can scan. You can still host it as a file. Off: always upload a .txt.</string>
     <string name="save">Save</string>
     <string name="reset_default">Reset to tmp.sanctumos.org</string>
     <string name="uploading">Uploading to Sanctum Temp…</string>
+    <string name="encoding_qr">Making a QR…</string>
+    <string name="qr_ready">QR ready — scan on another device, or host as a file instead.</string>
+    <string name="qr_fallback_upload">Too large for a QR — hosting as a file instead.</string>
     <string name="upload_ok">Uploaded</string>
     <string name="upload_failed">Upload failed</string>
     <string name="copy_direct">Copy direct URL</string>
     <string name="copy_view">Copy view URL</string>
+    <string name="copy_payload">Copy QR text</string>
+    <string name="host_as_file">Host as file instead</string>
     <string name="open_view">Open</string>
     <string name="copied">Copied</string>
     <string name="done">Done</string>
     <string name="host_line">Destination: %1$s</string>
     <string name="batch_summary">%1$d succeeded · %2$d failed</string>
+    <string name="qr_image_cd">QR code for shared text</string>
+    <string name="qr_payload_label">Encoded payload</string>
 </resources>

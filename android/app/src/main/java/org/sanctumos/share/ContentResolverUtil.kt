@@ -30,6 +30,8 @@ object ContentResolverUtil {
         return UploadFile(dest, dest.name, "text/plain")
     }
 
+    fun displayName(context: Context, uri: Uri): String? = queryDisplayName(context, uri)
+
     private fun queryDisplayName(context: Context, uri: Uri): String? {
         var cursor: Cursor? = null
         return try {
