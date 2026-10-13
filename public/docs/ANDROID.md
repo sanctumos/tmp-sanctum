@@ -10,11 +10,11 @@ Share-sheet client for this Sanctum Temp API. Lives in **`android/`** in the sam
 ## What it does
 
 - Appears in Android **Share** (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`) for `*/*` and text
-- **Text / small text-like shares (default):** QR-first via `POST {base}/api/v1/encode.php` (same soft ≤3500‑byte rule as the website). Shows a scannable QR + **Host as file instead** override. Too large for a QR → auto-falls back to upload.
+- **Text / small text-like shares (default):** opens straight into a QR (local encode, same soft ≤3500‑byte rule as the website), then optionally refines via `POST {base}/api/v1/encode.php`. **Do file instead** uploads a `.txt`. Too large for a QR → auto-falls back to upload.
 - **Files:** Uploads with `POST {base}/api/v1/upload.php`
   - one file → multipart field `file`
   - many files → multipart `files[]` (max 20, same as server)
-- Shows **view URL** + **direct_url**; copy / open
+- **Results:** view URL + direct_url + a **results QR** of the API JSON (same handoff idea as the website)
 - **Settings:** Sanctum Temp base URL (default `https://tmp.sanctumos.org`) + **Prefer QR for shared text** (default on)
 - Home: pick files + recent share history
 

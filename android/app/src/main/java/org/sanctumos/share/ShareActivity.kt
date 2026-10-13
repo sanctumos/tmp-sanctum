@@ -60,43 +60,106 @@ class ShareActivity : AppCompatActivity() {
             showError("No share intent")
             return
         }
+        // Text → QR immediately (local), same “open and go” feel as file upload.
+        if (prefs.preferQrForText()) {
+            val text = extractTextCandidate(intent)
+            if (text != null) {
+                startTextQrWorkflow(text)
+                return
+            }
+        }
         lifecycleScope.launch {
             resetResultUi()
             binding.progress.visibility = View.VISIBLE
-            binding.textStatus.setText(
-                if (prefs.preferQrForText() && looksLikeTextShare(intent)) {
-                    R.string.encoding_qr
-                } else {
-                    R.string.uploading
-                },
-            )
+            binding.textStatus.setText(R.string.uploading)
             val outcome = withContext(Dispatchers.IO) {
-                runCatching { resolveShare(intent) }
+                runCatching { resolveFileShare(intent) }
             }
             binding.progress.visibility = View.GONE
-            outcome.onSuccess { applyOutcome(it) }
+            outcome.onSuccess { showSuccess(it) }
+                .onFailure { e -> showError(e.message ?: getString(R.string.upload_failed)) }
+        }
+    }
+
+    /**
+     * Instant path: paint a QR from the shared text right away, then optionally
+     * refine via encode.php (URL/email normalize). Override = Do file instead.
+     */
+    private fun startTextQrWorkflow(text: String) {
+        resetResultUi()
+        pendingText = text
+        binding.progress.visibility = View.VISIBLE
+        binding.textStatus.setText(R.string.encoding_qr)
+
+        val localOk = try {
+            QrBitmap.fromPayload(text)
+            true
+        } catch (_: Exception) {
+            false
+        }
+
+        if (localOk) {
+            showQr(text, sourceText = text, refining = true)
+            lifecycleScope.launch {
+                val refined = withContext(Dispatchers.IO) {
+                    runCatching { encodeClient.encode(prefs.encodeUrl(), text) }.getOrNull()
+                }
+                binding.progress.visibility = View.GONE
+                when (refined) {
+                    is EncodeResult.Success -> {
+                        if (refined.encoded.isNotBlank() && refined.encoded != text) {
+                            showQr(refined.encoded, sourceText = text, refining = false)
+                        } else {
+                            binding.textStatus.setText(R.string.qr_ready)
+                        }
+                    }
+                    is EncodeResult.CapacityExceeded -> {
+                        // Local QR already shown; keep it. User can still Do file instead.
+                        binding.textStatus.setText(R.string.qr_ready)
+                    }
+                    else -> binding.textStatus.setText(R.string.qr_ready)
+                }
+            }
+            return
+        }
+
+        // Won't fit a local QR — try server encode, else upload as file.
+        lifecycleScope.launch {
+            binding.progress.visibility = View.VISIBLE
+            binding.textStatus.setText(R.string.encoding_qr)
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { encodeOrFallback(text) }
+            }
+            binding.progress.visibility = View.GONE
+            outcome.onSuccess { applyEncodeOutcome(it) }
                 .onFailure { e ->
+                    pendingText = text
                     showError(e.message ?: getString(R.string.upload_failed))
                 }
         }
     }
 
-    private sealed class ShareOutcome {
-        data class Qr(val encoded: String, val type: String, val sourceText: String) : ShareOutcome()
-        data class Upload(val batch: UploadBatchResult, val note: String? = null) : ShareOutcome()
-        data class QrFailed(val message: String, val sourceText: String) : ShareOutcome()
+    private sealed class EncodeOutcome {
+        data class Qr(val encoded: String, val sourceText: String) : EncodeOutcome()
+        data class Upload(val batch: UploadBatchResult, val note: String?) : EncodeOutcome()
+        data class Failed(val message: String, val sourceText: String) : EncodeOutcome()
     }
 
-    private fun looksLikeTextShare(intent: Intent): Boolean {
-        if (intent.action != Intent.ACTION_SEND) return false
+    private fun extractTextCandidate(intent: Intent): String? {
+        if (intent.action != Intent.ACTION_SEND) return null
+        val stream = parcelableUri(intent, Intent.EXTRA_STREAM)
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-        if (!text.isNullOrBlank() && parcelableUri(intent, Intent.EXTRA_STREAM) == null) {
-            return TextSharePolicy.isQrCandidateText(text)
+        if (stream != null) {
+            val asText = maybeReadTextCandidate(stream) ?: return null
+            return asText.takeIf { TextSharePolicy.isQrCandidateText(it) }
         }
-        return false
+        if (!text.isNullOrBlank() && TextSharePolicy.isQrCandidateText(text)) {
+            return text
+        }
+        return null
     }
 
-    private fun resolveShare(intent: Intent): ShareOutcome {
+    private fun resolveFileShare(intent: Intent): UploadBatchResult {
         val action = intent.action
         when (action) {
             Intent.ACTION_SEND -> {
@@ -104,23 +167,14 @@ class ShareActivity : AppCompatActivity() {
                 val stream = parcelableUri(intent, Intent.EXTRA_STREAM)
                 when {
                     stream != null -> {
-                        val asText = maybeReadTextCandidate(stream)
-                        if (asText != null && prefs.preferQrForText() && TextSharePolicy.isQrCandidateText(asText)) {
-                            return encodeOrFallback(asText)
-                        }
                         val file = ContentResolverUtil.toUploadFile(this, stream)
                         return try {
-                            ShareOutcome.Upload(uploadClient.upload(prefs.uploadUrl(), listOf(file)))
+                            uploadClient.upload(prefs.uploadUrl(), listOf(file))
                         } finally {
                             file.file.delete()
                         }
                     }
-                    !text.isNullOrBlank() -> {
-                        if (prefs.preferQrForText() && TextSharePolicy.isQrCandidateText(text)) {
-                            return encodeOrFallback(text)
-                        }
-                        return uploadText(text)
-                    }
+                    !text.isNullOrBlank() -> return uploadText(text)
                     else -> error("Share had no file or text")
                 }
             }
@@ -129,7 +183,7 @@ class ShareActivity : AppCompatActivity() {
                     ?: error("No files in multi-share")
                 val files = streams.map { ContentResolverUtil.toUploadFile(this, it) }
                 return try {
-                    ShareOutcome.Upload(uploadClient.upload(prefs.uploadUrl(), files))
+                    uploadClient.upload(prefs.uploadUrl(), files)
                 } finally {
                     files.forEach { it.file.delete() }
                 }
@@ -138,26 +192,26 @@ class ShareActivity : AppCompatActivity() {
         }
     }
 
-    private fun encodeOrFallback(text: String): ShareOutcome {
+    private fun encodeOrFallback(text: String): EncodeOutcome {
         return when (val enc = encodeClient.encode(prefs.encodeUrl(), text)) {
             is EncodeResult.Success -> {
                 if (enc.encoded.isBlank()) {
-                    uploadText(text, getString(R.string.qr_fallback_upload))
+                    EncodeOutcome.Upload(uploadText(text), getString(R.string.qr_fallback_upload))
                 } else {
-                    ShareOutcome.Qr(enc.encoded, enc.type, text)
+                    EncodeOutcome.Qr(enc.encoded, text)
                 }
             }
             is EncodeResult.CapacityExceeded ->
-                uploadText(text, getString(R.string.qr_fallback_upload))
+                EncodeOutcome.Upload(uploadText(text), getString(R.string.qr_fallback_upload))
             is EncodeResult.Failed ->
-                ShareOutcome.QrFailed(enc.message, text)
+                EncodeOutcome.Failed(enc.message, text)
         }
     }
 
-    private fun uploadText(text: String, note: String? = null): ShareOutcome.Upload {
+    private fun uploadText(text: String): UploadBatchResult {
         val file = ContentResolverUtil.textToUploadFile(this, text)
         return try {
-            ShareOutcome.Upload(uploadClient.upload(prefs.uploadUrl(), listOf(file)), note)
+            uploadClient.upload(prefs.uploadUrl(), listOf(file))
         } finally {
             file.file.delete()
         }
@@ -181,16 +235,14 @@ class ShareActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyOutcome(outcome: ShareOutcome) {
+    private fun applyEncodeOutcome(outcome: EncodeOutcome) {
         when (outcome) {
-            is ShareOutcome.Qr -> showQr(outcome)
-            is ShareOutcome.Upload -> {
-                if (outcome.note != null) {
-                    binding.textStatus.text = outcome.note
-                }
+            is EncodeOutcome.Qr -> showQr(outcome.encoded, sourceText = outcome.sourceText, refining = false)
+            is EncodeOutcome.Upload -> {
+                if (outcome.note != null) binding.textStatus.text = outcome.note
                 showSuccess(outcome.batch, keepStatus = outcome.note != null)
             }
-            is ShareOutcome.QrFailed -> {
+            is EncodeOutcome.Failed -> {
                 pendingText = outcome.sourceText
                 binding.textStatus.setText(R.string.upload_failed)
                 binding.textResult.visibility = View.VISIBLE
@@ -201,13 +253,14 @@ class ShareActivity : AppCompatActivity() {
         }
     }
 
-    private fun showQr(outcome: ShareOutcome.Qr) {
-        pendingText = outcome.sourceText
-        qrPayload = outcome.encoded
-        binding.textStatus.setText(R.string.qr_ready)
+    private fun showQr(encoded: String, sourceText: String, refining: Boolean) {
+        pendingText = sourceText
+        qrPayload = encoded
+        binding.textStatus.setText(if (refining) R.string.encoding_qr else R.string.qr_ready)
         val bmp = try {
-            QrBitmap.fromPayload(outcome.encoded)
+            QrBitmap.fromPayload(encoded)
         } catch (e: Exception) {
+            binding.progress.visibility = View.GONE
             binding.textStatus.setText(R.string.upload_failed)
             binding.textResult.visibility = View.VISIBLE
             binding.textResult.text = e.message ?: "Could not render QR"
@@ -215,10 +268,14 @@ class ShareActivity : AppCompatActivity() {
             binding.buttonDone.visibility = View.VISIBLE
             return
         }
+        if (!refining) {
+            binding.progress.visibility = View.GONE
+        }
         binding.imageQr.setImageBitmap(bmp)
         binding.imageQr.visibility = View.VISIBLE
         binding.textResult.visibility = View.VISIBLE
-        binding.textResult.text = getString(R.string.qr_payload_label) + "\n" + outcome.encoded
+        binding.textResult.text = getString(R.string.qr_hint_text) + "\n\n" +
+            getString(R.string.qr_payload_label) + "\n" + encoded
         binding.buttonCopyPayload.visibility = View.VISIBLE
         binding.buttonHostFile.visibility = View.VISIBLE
         binding.buttonDone.visibility = View.VISIBLE
@@ -232,7 +289,7 @@ class ShareActivity : AppCompatActivity() {
             binding.buttonCopyPayload.visibility = View.GONE
             binding.buttonHostFile.visibility = View.GONE
             val result = withContext(Dispatchers.IO) {
-                runCatching { uploadText(text).batch }
+                runCatching { uploadText(text) }
             }
             binding.progress.visibility = View.GONE
             result.onSuccess { showSuccess(it) }
@@ -263,7 +320,24 @@ class ShareActivity : AppCompatActivity() {
         if (!keepStatus) {
             binding.textStatus.setText(R.string.upload_ok)
         }
+
+        // Results QR — same idea as website (scan API JSON / handoff).
+        val qrJson = batch.rawJson?.takeIf { it.isNotBlank() }
+            ?: buildSuccessJson(first)
+        qrPayload = qrJson
+        try {
+            binding.imageQr.setImageBitmap(QrBitmap.fromPayload(qrJson))
+            binding.imageQr.visibility = View.VISIBLE
+            binding.buttonCopyPayload.visibility = View.VISIBLE
+        } catch (_: Exception) {
+            // Payload too large for QR (big batch) — skip image, keep URL buttons.
+            binding.imageQr.visibility = View.GONE
+            binding.buttonCopyPayload.visibility = View.GONE
+            qrPayload = null
+        }
+
         val lines = StringBuilder()
+        lines.append(getString(R.string.qr_hint_file)).append('\n')
         lines.append(getString(R.string.batch_summary, ok.size, batch.items.size - ok.size)).append('\n')
         for (item in ok) {
             lines.append('\n').append(item.filename).append('\n')
@@ -276,6 +350,18 @@ class ShareActivity : AppCompatActivity() {
         binding.buttonCopyView.visibility = View.VISIBLE
         binding.buttonOpen.visibility = View.VISIBLE
         binding.buttonDone.visibility = View.VISIBLE
+    }
+
+    private fun buildSuccessJson(item: UploadItemResult): String {
+        val data = org.json.JSONObject()
+            .put("url", item.url.orEmpty())
+            .put("direct_url", item.directUrl.orEmpty())
+            .put("id", item.id.orEmpty())
+            .put("filename", item.filename)
+        return org.json.JSONObject()
+            .put("status", "success")
+            .put("data", data)
+            .toString()
     }
 
     private fun showError(message: String) {

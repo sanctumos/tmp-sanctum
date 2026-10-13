@@ -28,6 +28,8 @@ data class UploadItemResult(
 data class UploadBatchResult(
     val httpCode: Int,
     val items: List<UploadItemResult>,
+    /** Raw API JSON — used for results-page QR (same as website). */
+    val rawJson: String? = null,
 )
 
 class UploadClient(
@@ -121,7 +123,7 @@ class UploadClient(
                     )
                 }
             }
-            return UploadBatchResult(code, items)
+            return UploadBatchResult(code, items, rawJson = text)
         }
         return UploadBatchResult(
             code,
@@ -134,6 +136,7 @@ class UploadClient(
                     id = data.optString("id"),
                 ),
             ),
+            rawJson = text,
         )
     }
 }
