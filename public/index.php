@@ -21,6 +21,11 @@ if ($uri === '/docs/api' || $uri === '/docs/API.md') {
     exit;
 }
 
+if ($uri === '/app' || $uri === '/app/' || $uri === '/download' || $uri === '/download/') {
+    render_app_download();
+    exit;
+}
+
 if ($uri === '/docs/android' || $uri === '/docs/android/' || $uri === '/docs/ANDROID.md') {
     if ($uri === '/docs/ANDROID.md') {
         sanctum_tmp_send_markdown_file(sanctum_tmp_doc_path('ANDROID.md'), 'ANDROID.md');

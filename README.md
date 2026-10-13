@@ -16,6 +16,7 @@ Temporary file host for SanctumOS (`tmp.sanctumos.org`) — **tmpfiles.org-compa
 | HTTP API | [`docs/API.md`](docs/API.md) · live `/docs/api/` |
 | Agents | [`AGENTS.md`](AGENTS.md) |
 | Android app | [`docs/ANDROID.md`](docs/ANDROID.md) · `/docs/android/` |
+| Get the app (APK) | Live `/app/` · artifacts in `public/downloads/` |
 | Branding (web + app) | [`docs/BRANDING.md`](docs/BRANDING.md) · `/docs/branding/` |
 | Deploy | [`docs/DEPLOY-multihost.md`](docs/DEPLOY-multihost.md) |
 

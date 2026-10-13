@@ -102,6 +102,53 @@ Full HTTP reference: [`API.md`](API.md). Optional QR studio (`POST /api/v1/qr.ph
 
 ---
 
+## Public download page (tmp.sanctumos.org)
+
+Live install instructions for end users: **`/app/`** (also `/download/`).
+
+Footer link on every HTML page: **Get the app**.
+
+Hosted artifacts (deployed with `public/`):
+
+| Path | Role |
+|------|------|
+| `public/downloads/sanctum-share-latest.apk` | Stable download URL |
+| `public/downloads/sanctum-share-<version>.apk` | Versioned copy |
+| `public/downloads/SHA256SUMS` | SHA-256 list (also the integrity source of truth in git) |
+| `public/downloads/release.json` | Version metadata for the `/app/` page |
+
+### Verify a download (security-conscious)
+
+1. Download the APK from `/downloads/sanctum-share-latest.apk`.
+2. `sha256sum sanctum-share-latest.apk` (or `sha256sum -c SHA256SUMS`).
+3. Compare to **`public/downloads/SHA256SUMS` in this GitHub repo** — not only the copy on the website. If site and git disagree, do not install.
+4. Rebuilding from source yourself is encouraged for audit; the hash of a local rebuild may differ from the published APK (timestamps / signing). The published SHA-256 authenticates the **published** binary.
+
+### Publish a new APK (maintainers & forks)
+
+```bash
+cd android
+./tools/assemble-debug-on-termux.sh   # or ./gradlew :app:assembleDebug / assembleRelease
+./tools/publish-apk-to-public.sh      # copies into public/downloads/, rewrites SHA256SUMS + release.json
+# commit + push public/downloads/  → multihost sync serves /app/ and the new file
+```
+
+Optional env for forks: `SANCTUM_SHARE_SOURCE_REPO=https://github.com/you/your-tmp-fork`.
+
+Also update `Prefs.DEFAULT_BASE` (and branding — see [`BRANDING.md`](BRANDING.md)) if your fork should default to *your* Temp host.
+
+---
+
+## Customize for a fork (checklist)
+
+1. **Brand** — [`BRANDING.md`](BRANDING.md): `site.json`, `brand.css`, Android `colors.xml` / `strings.xml` / mark.
+2. **Default host** — `android/.../Prefs.kt` → `DEFAULT_BASE`.
+3. **Package id** (optional) — `applicationId` in `android/app/build.gradle.kts` (new id = clean install, not an upgrade).
+4. **Build + publish** — `publish-apk-to-public.sh`, commit `public/downloads/`.
+5. **Ship site** — deploy `public/` so `/app/` and `/downloads/*.apk` are live on your domain.
+
+---
+
 ## License
 
 Same as the host project (see repo root). App sources are part of `sanctumos/tmp-sanctum`.

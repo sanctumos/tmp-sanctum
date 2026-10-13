@@ -19,7 +19,7 @@ Canonical color/name map: [`branding/tokens.json`](../branding/tokens.json).
 | Android launcher icon | optional `mipmap-*` / adaptive icons (see Android doc) |
 
 After web changes: redeploy `public/` (multihost `sync.sh` / `deploy.sh`).  
-After Android changes: rebuild the APK (`android/tools/assemble-debug-on-termux.sh` or Android Studio).
+After Android changes: rebuild the APK (`android/tools/assemble-debug-on-termux.sh` or Android Studio), then publish to the site with `android/tools/publish-apk-to-public.sh` (updates `public/downloads/` + checksums for `/app/`). See [`ANDROID.md`](ANDROID.md) → *Publish a new APK*.
 
 ---
 

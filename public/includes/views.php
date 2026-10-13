@@ -156,7 +156,8 @@ function sanctum_tmp_page_shell_end(bool $withCopy = false): void
     echo '</main><footer>Part of <a href="' . htmlspecialchars((string) $brand['footer_org_url']) . '">'
         . htmlspecialchars((string) $brand['footer_org_name']) . '</a> · ';
     echo '<a href="/docs/api/">API</a> · <a href="/AGENTS.md">Agents</a>'
-        . ' · <a href="/docs/android/">Android</a></footer></div>';
+        . ' · <a href="/docs/android/">Android</a>'
+        . ' · <a href="/app/">Get the app</a></footer></div>';
     if ($withCopy) {
         echo sanctum_tmp_copy_script();
     }
@@ -296,6 +297,7 @@ function render_home(): void
     echo '<div class="doc-links">';
     echo '<a href="/docs/api/">API documentation</a>';
     echo '<a href="/AGENTS.md">AGENTS.md</a>';
+    echo '<a href="/app/">Get the app</a>';
     echo '<a href="https://qr.decisionsciencecorp.com/">QR Code Studio</a>';
     echo '</div>';
 
@@ -319,6 +321,136 @@ function render_home_plain(): void
     echo "Multi:   POST /api/v1/upload.php  (multipart field: files[]; max {$config->maxBatchSize} per batch)\n";
     echo "API:     GET  /docs/API.md\n";
     echo "Agents:  GET  /AGENTS.md\n";
+}
+
+/**
+ * Load published Sanctum Share release metadata from public/downloads/release.json.
+ *
+ * @return array{
+ *   product:string,package_id:string,version_name:string,version_code:int,
+ *   build_type:string,apk:string,apk_versioned:string,sha256_file:string,
+ *   sha256:string,source_repo:string,source_path:string,published_at:string
+ * }
+ */
+function sanctum_tmp_app_release(): array
+{
+    $defaults = [
+        'product' => 'Sanctum Share',
+        'package_id' => 'org.sanctumos.share',
+        'version_name' => '0.1.0',
+        'version_code' => 1,
+        'build_type' => 'debug',
+        'apk' => 'sanctum-share-latest.apk',
+        'apk_versioned' => 'sanctum-share-0.1.0.apk',
+        'sha256_file' => 'SHA256SUMS',
+        'sha256' => '',
+        'source_repo' => 'https://github.com/sanctumos/tmp-sanctum',
+        'source_path' => 'android/',
+        'published_at' => '',
+    ];
+    $path = dirname(__DIR__) . '/downloads/release.json';
+    if (!is_file($path)) {
+        return $defaults;
+    }
+    $decoded = json_decode((string) file_get_contents($path), true);
+    if (!is_array($decoded)) {
+        return $defaults;
+    }
+    return array_merge($defaults, $decoded);
+}
+
+/** Newbie-friendly APK download + sideload + checksum page. */
+function render_app_download(): void
+{
+    $rel = sanctum_tmp_app_release();
+    $apkName = (string) $rel['apk'];
+    $apkUrl = '/downloads/' . rawurlencode($apkName);
+    $sumsUrl = '/downloads/' . rawurlencode((string) $rel['sha256_file']);
+    $versionedUrl = '/downloads/' . rawurlencode((string) $rel['apk_versioned']);
+    $sha = (string) $rel['sha256'];
+    $ver = (string) $rel['version_name'];
+    $repo = (string) $rel['source_repo'];
+    $shaGithub = rtrim($repo, '/') . '/blob/main/public/downloads/SHA256SUMS';
+    $androidSrc = rtrim($repo, '/') . '/tree/main/android';
+    $product = (string) $rel['product'];
+
+    sanctum_tmp_page_shell_start('Get the app', $product . ' for Android');
+    echo '<h2 class="doc-title">Get ' . htmlspecialchars($product) . '</h2>';
+    echo '<p class="lead">Free Android app that appears in your phone’s <strong>Share</strong> menu '
+        . 'and uploads files to this site (or your own Sanctum Temp host). '
+        . 'Not on the Play Store — you install the APK yourself (sideload). Takes about a minute.</p>';
+
+    echo '<p><a class="btn" href="' . htmlspecialchars($apkUrl) . '" download>Download APK '
+        . '(v' . htmlspecialchars($ver) . ')</a> '
+        . '<a class="btn secondary" href="' . htmlspecialchars($sumsUrl) . '">SHA256 checksums</a></p>';
+    echo '<p class="meta">Package <code>' . htmlspecialchars((string) $rel['package_id']) . '</code>'
+        . ' · build <code>' . htmlspecialchars((string) $rel['build_type']) . '</code>'
+        . ' · also <a href="' . htmlspecialchars($versionedUrl) . '">'
+        . htmlspecialchars((string) $rel['apk_versioned']) . '</a>'
+        . ' · source <a href="' . htmlspecialchars($androidSrc) . '">android/</a> on GitHub</p>';
+
+    echo '<h2>Install on your phone (sideload)</h2>';
+    echo '<ol class="lead" style="padding-left:1.25rem">';
+    echo '<li style="margin:.5rem 0"><strong>Download</strong> the APK with the button above '
+        . '(on your phone’s browser is easiest).</li>';
+    echo '<li style="margin:.5rem 0">Open the downloaded file. If Android says the install is blocked, '
+        . 'tap <strong>Settings</strong> and allow installs from this browser (Chrome, Firefox, etc.). '
+        . 'On older phones this is “Install unknown apps” or “Unknown sources”.</li>';
+    echo '<li style="margin:.5rem 0">Tap <strong>Install</strong>, then <strong>Open</strong>.</li>';
+    echo '<li style="margin:.5rem 0">Try it: open Photos (or Files) → pick something → <strong>Share</strong> → '
+        . '<strong>Sanctum Share</strong>. You should get a link back.</li>';
+    echo '</ol>';
+    echo '<p class="meta">Default upload host is <code>https://tmp.sanctumos.org</code>. '
+        . 'Change it anytime in the app’s <strong>Settings</strong> if you self-host Temp.</p>';
+
+    echo '<h2>Check the file isn’t tampered with</h2>';
+    echo '<p class="lead">Every published APK has a SHA-256 hash checked into the '
+        . '<a href="' . htmlspecialchars($repo) . '">public GitHub repo</a>. '
+        . 'If the hash of the file you downloaded matches the hash in git, the APK matches what SanctumOS published.</p>';
+    if ($sha !== '') {
+        echo '<p><strong>Expected SHA-256 for this release:</strong></p>';
+        echo '<pre class="code-block"><code>' . htmlspecialchars($sha) . '  ' . htmlspecialchars($apkName)
+            . '</code></pre>';
+    }
+    echo '<h3>On a computer</h3>';
+    echo '<ol class="lead" style="padding-left:1.25rem">';
+    echo '<li style="margin:.5rem 0">Download the APK (and optionally '
+        . '<a href="' . htmlspecialchars($sumsUrl) . '">SHA256SUMS</a>).</li>';
+    echo '<li style="margin:.5rem 0">In a terminal, in the folder with the APK:</li>';
+    echo '</ol>';
+    echo '<pre class="code-block"><code>sha256sum ' . htmlspecialchars($apkName) . "\n"
+        . '# or, if you also saved SHA256SUMS next to it:' . "\n"
+        . 'sha256sum -c SHA256SUMS</code></pre>';
+    echo '<p class="meta">On macOS: <code>shasum -a 256 ' . htmlspecialchars($apkName) . '</code>. '
+        . 'On Windows (PowerShell): <code>Get-FileHash .\\' . htmlspecialchars($apkName)
+        . ' -Algorithm SHA256</code>.</p>';
+    echo '<h3>Compare to the open-source repo</h3>';
+    echo '<ol class="lead" style="padding-left:1.25rem">';
+    echo '<li style="margin:.5rem 0">Open the checksum file in git: '
+        . '<a href="' . htmlspecialchars($shaGithub) . '">public/downloads/SHA256SUMS</a>.</li>';
+    echo '<li style="margin:.5rem 0">Confirm the hash for <code>' . htmlspecialchars($apkName)
+        . '</code> (or the versioned name) matches what <code>sha256sum</code> printed.</li>';
+    echo '<li style="margin:.5rem 0">If the site’s hash and GitHub’s hash disagree, <strong>don’t install</strong> — '
+        . 'something is wrong with one of the copies.</li>';
+    echo '</ol>';
+    echo '<p class="meta">Optional: clone the repo and build from <code>android/</code> yourself '
+        . '(see <a href="/docs/android/">Android docs</a>). A self-built APK may have a '
+        . '<em>different</em> hash than this published file (timestamps / signing). '
+        . 'That’s normal — the published SHA-256 is the integrity check for <em>this</em> download, '
+        . 'not a claim that every rebuild is byte-identical.</p>';
+
+    echo '<h2>Forks &amp; self-hosters</h2>';
+    echo '<p class="lead">Want your own logo, name, or default upload host? Branding and publishing steps '
+        . 'are in the repo:</p>';
+    echo '<ul class="lead">';
+    echo '<li><a href="/docs/branding/">Branding</a> — swap website + app assets</li>';
+    echo '<li><a href="/docs/android/">Android</a> — build, and publish your own APK + checksums under '
+        . '<code>public/downloads/</code></li>';
+    echo '</ul>';
+
+    echo '<div class="doc-links"><a href="/docs/api/">API</a><a href="/docs/android/">Android</a>'
+        . '<a href="/docs/branding/">Branding</a><a href="/app/">Get the app</a><a href="/">Upload</a></div>';
+    sanctum_tmp_page_shell_end(true);
 }
 
 function render_api_docs(): void
@@ -345,7 +477,7 @@ function render_markdown_doc(string $relative, string $heading, string $subtitle
     echo '<h2 class="doc-title">' . htmlspecialchars($heading) . '</h2>';
     echo sanctum_tmp_markdown_to_html($markdown);
     echo '<div class="doc-links"><a href="/docs/api/">API</a><a href="/docs/android/">Android</a>'
-        . '<a href="/docs/branding/">Branding</a><a href="/">Upload</a></div>';
+        . '<a href="/docs/branding/">Branding</a><a href="/app/">Get the app</a><a href="/">Upload</a></div>';
     sanctum_tmp_page_shell_end();
 }
 
