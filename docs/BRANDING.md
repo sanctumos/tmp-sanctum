@@ -15,8 +15,9 @@ Canonical color/name map: [`branding/tokens.json`](../branding/tokens.json).
 | Website product name / footer | `public/branding/site.json` |
 | Android colors | `android/app/src/main/res/values/colors.xml` |
 | Android display strings | `android/app/src/main/res/values/strings.xml` |
-| Android mark (in-app) | `android/app/src/main/res/drawable/ic_sanctum_mark.xml` |
-| Android launcher icon | optional `mipmap-*` / adaptive icons (see Android doc) |
+| Android mark (in-app) | `android/app/src/main/res/drawable*/ic_sanctum_logo.png` (real SanctumOS mark; density buckets) |
+| Android launcher icon | `mipmap-*/ic_launcher*.png` + `mipmap-anydpi-v26/ic_launcher.xml` (adaptive, slate `#3C6E8F` background) |
+| Android simplified vector (fallback) | `android/app/src/main/res/drawable/ic_sanctum_mark.xml` (not used by UI when logo PNG is present) |
 
 After web changes: redeploy `public/` (multihost `sync.sh` / `deploy.sh`).  
 After Android changes: rebuild the APK (`android/tools/assemble-debug-on-termux.sh` or Android Studio), then publish to the site with `android/tools/publish-apk-to-public.sh` (updates `public/downloads/` + checksums for `/app/`). See [`ANDROID.md`](ANDROID.md) → *Publish a new APK*.
@@ -66,8 +67,8 @@ App lives in **`android/`** in this repo (package `org.sanctumos.share`). Defaul
    - `app_name`, `share_label`, `home_blurb`, settings strings.
 2. **Colors** — edit `android/app/src/main/res/values/colors.xml` to match `branding/tokens.json` (or your fork’s palette).  
    - Resource names stay (`sanctum_bg`, `sanctum_primary`, …); only the hex values change.
-3. **In-app mark** — replace `android/app/src/main/res/drawable/ic_sanctum_mark.xml` (vector) or add a bitmap under `drawable-*/`.
-4. **Launcher icon** — add adaptive icons under `mipmap-anydpi-v26` + density buckets; point `android:icon` / `roundIcon` in `AndroidManifest.xml` at `@mipmap/ic_launcher`.
+3. **In-app mark** — replace `drawable*/ic_sanctum_logo.png` (mdpi→xxxhdpi) with your logo; layouts use `@drawable/ic_sanctum_logo` in the slate site-bar header.
+4. **Launcher icon** — replace `mipmap-*/ic_launcher_foreground.png` (padded for adaptive safe zone) and legacy `ic_launcher.png` / `ic_launcher_round.png`; keep `ic_launcher_background` in `colors.xml` matching your brand slate.
 5. Rebuild: see [`docs/ANDROID.md`](ANDROID.md).
 
 Default base URL for uploads is **not** a brand asset; change `Prefs.DEFAULT_BASE` only if your fork should ship pointed at *your* host.

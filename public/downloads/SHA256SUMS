@@ -1,4 +1,4 @@
 # Sanctum Share published APKs — verify with: sha256sum -c SHA256SUMS
-# Also published in git: https://github.com/sanctumos/tmp-sanctum/blob/main/public/downloads/SHA256SUMS
-734c93a240b319adfbdf52048de2762b3e5e7a4315e1e7f6765540672657a584  sanctum-share-0.1.0.apk
-734c93a240b319adfbdf52048de2762b3e5e7a4315e1e7f6765540672657a584  sanctum-share-latest.apk
+# Also published in git: public/downloads/SHA256SUMS
+7ade2b3ca44cabeb4662204c21b62ed6d2c1c2e5c9b2891099ed7890b0e5be38  sanctum-share-0.1.1.apk
+7ade2b3ca44cabeb4662204c21b62ed6d2c1c2e5c9b2891099ed7890b0e5be38  sanctum-share-latest.apk

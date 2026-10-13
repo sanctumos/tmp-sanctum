@@ -4,6 +4,9 @@
     <color name="sanctum_bg">#F9F9F9</color>
     <color name="sanctum_surface">#FFFFFF</color>
     <color name="sanctum_bg2">#F4F4F4</color>
+    <!-- Site bar / logo slate -->
+    <color name="sanctum_slate">#3C6E8F</color>
+    <color name="sanctum_slate_deep">#2A5A7A</color>
     <color name="sanctum_primary">#1C80AA</color>
     <color name="sanctum_secondary">#E16E0A</color>
     <color name="sanctum_ink">#333333</color>
@@ -11,4 +14,6 @@
     <color name="sanctum_ok">#28A745</color>
     <color name="sanctum_err">#DC3545</color>
     <color name="sanctum_border">#CCCCCC</color>
+    <color name="sanctum_on_bar">#FFFFFF</color>
+    <color name="ic_launcher_background">#3C6E8F</color>
 </resources>

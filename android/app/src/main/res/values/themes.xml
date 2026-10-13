@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.SanctumShare" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/sanctum_primary</item>
+        <item name="colorPrimary">@color/sanctum_slate</item>
+        <item name="colorPrimaryContainer">@color/sanctum_primary</item>
         <item name="colorSecondary">@color/sanctum_secondary</item>
-        <item name="colorOnPrimary">@android:color/white</item>
-        <item name="android:statusBarColor">@color/sanctum_primary</item>
+        <item name="colorOnPrimary">@color/sanctum_on_bar</item>
+        <item name="android:statusBarColor">@color/sanctum_slate_deep</item>
         <item name="android:navigationBarColor">@color/sanctum_bg</item>
         <item name="android:windowBackground">@color/sanctum_bg</item>
         <item name="android:textColorPrimary">@color/sanctum_ink</item>
@@ -14,7 +15,13 @@
 
     <style name="Widget.SanctumShare.Button" parent="Widget.Material3.Button">
         <item name="backgroundTint">@color/sanctum_primary</item>
-        <item name="android:textColor">@android:color/white</item>
-        <item name="cornerRadius">10dp</item>
+        <item name="android:textColor">@color/sanctum_on_bar</item>
+        <item name="cornerRadius">8dp</item>
+    </style>
+
+    <style name="Widget.SanctumShare.Button.Accent" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/sanctum_secondary</item>
+        <item name="android:textColor">@color/sanctum_on_bar</item>
+        <item name="cornerRadius">8dp</item>
     </style>
 </resources>

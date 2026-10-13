@@ -1,13 +1,13 @@
 {
   "product": "Sanctum Share",
   "package_id": "org.sanctumos.share",
-  "version_name": "0.1.0",
-  "version_code": 1,
+  "version_name": "0.1.1",
+  "version_code": 2,
   "build_type": "debug",
   "apk": "sanctum-share-latest.apk",
-  "apk_versioned": "sanctum-share-0.1.0.apk",
+  "apk_versioned": "sanctum-share-0.1.1.apk",
   "sha256_file": "SHA256SUMS",
-  "sha256": "734c93a240b319adfbdf52048de2762b3e5e7a4315e1e7f6765540672657a584",
+  "sha256": "7ade2b3ca44cabeb4662204c21b62ed6d2c1c2e5c9b2891099ed7890b0e5be38",
   "source_repo": "https://github.com/sanctumos/tmp-sanctum",
   "source_path": "android/",
   "published_at": "2026-10-13"
